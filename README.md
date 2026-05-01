@@ -19,6 +19,7 @@ It enforces military-grade key isolation, protects against prompt injection, and
 - 🛡️ **Hardened Security** — HMAC-SHA256 request signing, NFKD unicode normalization, and 14+ pattern prompt-injection guard.
 - ⚙️ **Pluggable & Config-Driven** — configure via code, JSON, YAML, or TOML. Unused providers are never instantiated.
 - 📡 **Native Streaming** — full `AsyncGenerator` support for all providers.
+- 🛠️ **Optional Configuration Manager** — standalone, cross-platform Python desktop GUI for admins to edit config, rules, and env vars. Lives outside the npm package — zero coupling to the core router.
 
 ### Supported Providers
 - Google Gemini (`gemini`)
@@ -442,6 +443,50 @@ class InternalProvider extends BaseProvider { ... }
 
 router.registerProvider(new InternalProvider())
 ```
+
+---
+
+## Optional Configuration Manager (GUI)
+
+For operators who'd rather click than hand-edit JSON, FreeRouter ships an **optional, fully standalone** desktop configuration manager at [config-manager/](config-manager/). It is deliberately excluded from the published npm package (the `files: ["dist"]` allowlist in `package.json` ships only compiled router code), so the runtime has zero dependency on it — install, ignore, or delete it without consequence.
+
+- **Local Python desktop app** — uses only the Python standard library (Tkinter). No web server, no open ports, no extra `pip` packages. Runs on Linux, macOS, and Windows.
+- **Key-based admin auth** — a random admin key is generated on first launch; only its salted PBKDF2-HMAC-SHA256 digest is persisted (in the operator's home directory). Subsequent launches prompt for the key with constant-time comparison.
+- **Edits everything** — top-level config, providers, rate limits, cascading budgets, admin rules, pricing overrides, audit settings, and FreeRouter env vars.
+- **Atomic, validated writes** — every save runs the same structural validator the runtime uses; bad inputs are rejected with a clear error before any file is written. Files are written via sibling-`.tmp` + `os.replace` — atomic on every supported OS.
+- **Relative paths, cross-platform** — paths are interpreted relative to the operator's CWD, normalised through `pathlib`, so the same invocation works identically on POSIX and Windows.
+
+### Run it
+
+```bash
+# From the repo root
+python3 config-manager/freerouter_admin.py
+
+# Or with explicit relative paths
+python3 config-manager/freerouter_admin.py \
+  --config ./freerouter.config.json \
+  --rules  ./freerouter.rules.json \
+  --env    ./.env
+```
+
+First launch prints the admin key once — save it somewhere safe. Use `--reset-key` to regenerate.
+
+### What you can edit
+
+| Tab | Fields |
+|---|---|
+| General | `defaultProvider`, `defaultModel`, `masterKey`, `maxInputLength`, `keyExpiryMs`, `promptInjectionGuard`, `requestSigning` |
+| Providers | Per-provider `enabled` and `routingPrefixes`, `blockedProviders`, `allowedModels` |
+| Rate Limit | `requestsPerMinute`, `tokensPerMinute`, `burstAllowance` |
+| Budgets | Full CRUD over `BudgetPolicy[]` — scope, window, caps, `onLimitReached`, alert thresholds |
+| Rules | Full CRUD over `Rule[]` — match predicates, pin / strategy / block actions, priority |
+| Pricing Overrides | Per-model `input` / `output` / `cachedInput` USD-per-1M-tokens |
+| Audit | Toggle `audit.enabled` |
+| Env Vars | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN` — written to `.env` |
+
+Saves trigger the existing `FileRulesSource` hot-reload path — no router restart required when only rules change.
+
+The Configuration Manager is purely optional. You can still configure FreeRouter the conventional way — via code, JSON, YAML, or TOML — exactly as before; the GUI is a convenience for ops teams who own the live config files.
 
 ---
 

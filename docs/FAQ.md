@@ -11,6 +11,7 @@
 5. [Deployment Guide with Examples](#5-deployment-guide-with-examples)
 6. [Enterprise Use Cases](#6-enterprise-use-cases)
 7. [Troubleshooting](#7-troubleshooting)
+8. [Optional Configuration Manager (GUI)](#8-optional-configuration-manager-gui)
 
 ---
 
@@ -175,6 +176,7 @@ The `RulesEngine` lets the admin express *value-based* directives that override 
 | OpenAI-compatible middleware | `createMiddleware(router)` wraps FreeRouter in an Express/Fastify handler that speaks the OpenAI Chat API wire format. |
 | Config file | `FreeRouter.fromFile('./freerouter.config.json')` accepts JSON, YAML, or TOML. |
 | CLI | `freerouter validate-config`, `list-providers`, `rotate-key` for operational management. |
+| Optional GUI configuration manager | Standalone Python desktop app (Tkinter, stdlib-only) at [`config-manager/`](../config-manager/). Key-protected, edits config, rules, and `.env` files atomically. Excluded from the npm package — see [Section 8](#8-optional-configuration-manager-gui). |
 
 ---
 
@@ -736,3 +738,97 @@ The model was blocked via `router.blockModel()` or `router.removeModel()`. Check
 ### Tests pass but production spend counts are wrong in multi-process deployment
 
 `FileSpendStore` is single-process only — each process maintains its own in-memory state and writes its own file. In multi-process deployments you need a shared `SpendStore` backed by Redis or a database. Implement the two-method `SpendStore` interface against your store of choice.
+
+---
+
+## 8. Optional Configuration Manager (GUI)
+
+### What is the Configuration Manager?
+
+A **fully optional, standalone desktop application** — written in Python with Tkinter — that lets an admin edit every piece of FreeRouter configuration without hand-editing JSON. It lives in [`config-manager/`](../config-manager/) at the repo root, completely outside `src/` and `dist/`. Because `package.json` publishes only the `dist/` directory, the manager never ships with the npm package; it is a tool for the operator's machine, not a runtime dependency of the router.
+
+### Why is it separate from the core router?
+
+Three reasons:
+
+- **Zero coupling.** The router has no awareness of the manager and works identically whether the manager exists or not. Deleting the `config-manager/` folder breaks nothing.
+- **Different language, different runtime.** Python + Tkinter is a far better fit for a local desktop GUI than a Node web stack, and keeps FreeRouter's "zero runtime dependencies" promise intact for the core library.
+- **Operator surface is local.** Editing live config is an admin-machine activity, not a service-fleet activity. Keeping the tool local-only — no HTTP server, no listening socket — eliminates an entire class of production attack surface.
+
+### How is admin access controlled?
+
+Key-based, single-admin auth:
+
+- On first launch, the manager generates a 32-byte random admin key with `secrets.token_urlsafe`. Only its **PBKDF2-HMAC-SHA256** digest (with a per-install random salt, 200 000 iterations) is persisted, in `~/.freerouter-admin/key.hash`. The plaintext key is printed once and never written anywhere.
+- On subsequent launches, the operator enters the key via `getpass`. Comparison is constant-time (`hmac.compare_digest`). A wrong key exits the process with code 1 — the GUI never opens.
+- Use `--reset-key` to delete the digest and regenerate; `--print-key-path` reveals where the digest lives.
+
+There is no SSO and no multi-admin role model. The manager assumes a single trusted operator.
+
+### What can I edit through the GUI?
+
+Everything that lives in `freerouter.config.json`, plus the FileRulesSource rules file and a project-local `.env`:
+
+| Tab | Fields |
+|---|---|
+| **General** | `defaultProvider`, `defaultModel`, `masterKey` (64-char hex), `maxInputLength`, `keyExpiryMs`, `promptInjectionGuard`, `requestSigning` |
+| **Providers** | Per-provider `enabled` toggle and `routingPrefixes`, `blockedProviders`, `allowedModels` |
+| **Rate Limit** | `requestsPerMinute`, `tokensPerMinute`, `burstAllowance` |
+| **Budgets** | Full add / edit / delete over `BudgetPolicy[]` — scope (`global`/`org`/`department`/`team`/`user`), window, max spend / tokens / requests, `onLimitReached`, alert thresholds, priority |
+| **Rules** | Full add / edit / delete over `Rule[]` — match predicates (`userId`, `orgId`, `teamId`, `departmentId`, `modelPattern`, request priority), pin / strategy / block actions, priority |
+| **Pricing Overrides** | Per-model `input` / `output` / `cachedInput` (USD per 1M tokens) |
+| **Audit** | Toggle `audit.enabled` |
+| **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN` — written to a `.env` file in CWD |
+
+Audit sinks (file/HTTP/SIEM) are wired in TypeScript code at runtime, so the GUI only toggles the `enabled` flag — the sink itself is set when the `FreeRouter` instance is constructed.
+
+### How safe are the writes?
+
+Every save runs the **same structural validator** the runtime uses (a Python mirror of [`src/config-validator.ts`](../src/config-validator.ts)) plus a parallel rules validator. Errors block the save and surface as a dialog listing every problem; warnings are surfaced but do not block.
+
+File writes are atomic on every supported OS:
+
+- A sibling `*.tmp` file is written in the same directory as the target (so the final rename is a same-filesystem operation).
+- The temp file is `fsync`'d before rename (errors on Windows network shares are tolerated, since power-durability isn't worth aborting the save).
+- The rename uses `os.replace`, which Python documents as atomic on Linux, macOS, and Windows since 3.3.
+
+Combined with the validator gate, a failed save never produces a half-written file.
+
+### Does it work on Windows?
+
+Yes. All file paths flow through `pathlib.Path`, which accepts both forward and backslashes on Windows and resolves relative paths against the current working directory on every OS. The admin-key file lands at `%USERPROFILE%\.freerouter-admin\key.hash` on Windows and `$HOME/.freerouter-admin/key.hash` on Linux/macOS.
+
+A few cross-platform considerations the tool already handles:
+
+- `os.fsync` failures on some Windows filesystems are caught and ignored.
+- `os.chmod(0o600)` on the key-hash file is best-effort (Windows only honours the user-write bit).
+- All written JSON / `.env` files use `\n` line endings explicitly to keep the same byte content across hosts (committable to git without CRLF noise).
+
+### How do I run it?
+
+```bash
+# From the repo root, default file paths
+python3 config-manager/freerouter_admin.py
+
+# Explicit relative paths (any OS)
+python3 config-manager/freerouter_admin.py \
+  --config ./freerouter.config.json \
+  --rules  ./freerouter.rules.json \
+  --env    ./.env
+
+# Key management
+python3 config-manager/freerouter_admin.py --reset-key
+python3 config-manager/freerouter_admin.py --print-key-path
+```
+
+If Tkinter is missing on a Linux host, install it via the distro's package (`apt install python3-tk` or equivalent). On macOS, the `python.org` build or `brew install python-tk` provides it. On Windows, the official Python installer includes Tkinter by default.
+
+### Does saving rules require a router restart?
+
+No. When the router is configured with `rulesRefresh: { source: new FileRulesSource('./freerouter.rules.json'), intervalMs: 60_000 }`, the next refresh tick after the GUI saves the file picks up the change automatically. The same is true for `FilePricingSource` if the rules file path you point the GUI at matches the file the router watches.
+
+For the main `freerouter.config.json`, structural changes (new providers, changed budgets, etc.) still require a restart — same as if you'd hand-edited the file. The GUI is a *safer way to edit*, not a runtime injection mechanism.
+
+### Can I keep using JSON / YAML / TOML files directly?
+
+Yes. The Configuration Manager is purely a convenience for ops teams; it reads and writes the exact same JSON file the runtime consumes. Code-, JSON-, YAML-, and TOML-based configuration continues to work unchanged whether or not the manager is ever launched.
