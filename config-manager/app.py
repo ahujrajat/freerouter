@@ -23,6 +23,29 @@ import pricing_fetcher
 from validators import validate_config, validate_rules
 
 KNOWN_PROVIDERS = ["google", "openai", "anthropic", "mistral", "groq"]
+
+# Aliases used by community pricing aggregators (LiteLLM, OpenRouter) for the
+# providers FreeRouter knows natively. Used to match fetched provider names
+# against the operator's enabled-providers set so the tree/cache only show
+# providers actually configured in this deployment. Lowercase comparison.
+PROVIDER_ALIASES: dict[str, set[str]] = {
+    "google": {
+        "google", "gemini",
+        "vertex", "vertex_ai", "vertexai",
+        "vertex_ai-language-models",
+    },
+    "openai": {
+        "openai", "text-completion-openai",
+        "azure", "azure_ai",  # Azure OpenAI Service
+    },
+    "anthropic": {
+        "anthropic",
+        "vertex_ai-anthropic_models",  # Anthropic models hosted on Vertex
+        "bedrock_anthropic",
+    },
+    "mistral": {"mistral", "mistralai"},
+    "groq": {"groq"},
+}
 KNOWN_ENV_VARS: list[tuple[str, str]] = [
     ("FREEROUTER_CONFIG", "Path to the FreeRouter config file"),
     ("ROUTER_MASTER_KEY", "64-char hex AES-256-GCM master key (BYOK store)"),
@@ -492,6 +515,9 @@ class FetchPricingDialog(tk.Toplevel):
         # Session-only — never persisted, must be re-enabled each launch so the
         # operator stays deliberate about it.
         self._skip_tls_var = tk.BooleanVar(value=False)
+        # Filter the tree to providers configured in the current deployment by
+        # default — toggling this re-renders without re-fetching.
+        self._show_all_providers_var = tk.BooleanVar(value=False)
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
@@ -531,6 +557,12 @@ class FetchPricingDialog(tk.Toplevel):
             variable=self._skip_tls_var,
             command=self._on_skip_tls_toggle,
         ).grid(row=3, column=0, columnspan=3, sticky="w", padx=(0, 4), pady=(4, 0))
+        ttk.Checkbutton(
+            top,
+            text="Show all providers (including ones not enabled in this config)",
+            variable=self._show_all_providers_var,
+            command=self._populate_tree,
+        ).grid(row=3, column=2, columnspan=2, sticky="e", padx=(0, 4), pady=(4, 0))
 
         self.source_help_var = tk.StringVar()
         ttk.Label(
@@ -626,7 +658,13 @@ class FetchPricingDialog(tk.Toplevel):
 
     def _populate_tree(self) -> None:
         self.tree.delete(*self.tree.get_children())
+        show_all = self._show_all_providers_var.get()
+        shown = 0
+        hidden_providers: list[str] = []
         for provider in sorted(self._manifest):
+            if not show_all and not self.app._is_provider_active(provider):
+                hidden_providers.append(provider)
+                continue
             parent = self.tree.insert("", "end", text=provider, open=True)
             for model_id, pricing in sorted(self._manifest[provider].items()):
                 self.tree.insert(
@@ -638,6 +676,22 @@ class FetchPricingDialog(tk.Toplevel):
                         pricing.get("rpmLimit", ""),
                         pricing.get("tpmLimit", ""),
                     ),
+                )
+                shown += 1
+        # Update status to reflect the filter (only when there's a manifest).
+        if self._manifest:
+            total = sum(len(inner) for inner in self._manifest.values())
+            if hidden_providers and not show_all:
+                self.status_var.set(
+                    f"Showing {shown} model(s) from active providers "
+                    f"({total - shown} hidden across {len(hidden_providers)} disabled provider(s): "
+                    f"{', '.join(hidden_providers[:6])}{'…' if len(hidden_providers) > 6 else ''}). "
+                    "Tick 'Show all providers' to expand."
+                )
+            else:
+                self.status_var.set(
+                    f"Showing all {shown} model(s) across "
+                    f"{len(self.tree.get_children())} provider(s)."
                 )
 
     def _set_all(self, on: bool) -> None:
@@ -677,12 +731,8 @@ class FetchPricingDialog(tk.Toplevel):
             "pricingFetchUrl": url,
             "cachedManifest": manifest,
         })
+        # _populate_tree updates the status bar with filter-aware counts.
         self._populate_tree()
-        total = sum(len(inner) for inner in manifest.values())
-        self.status_var.set(
-            f"Fetched {total} model(s) across {len(manifest)} provider(s) via "
-            f"{self._sources[source_key]['label']}. Select rows and click Import."
-        )
         self.app._refresh_default_model_options()
 
     def _on_import(self) -> None:
@@ -1092,7 +1142,13 @@ class AdminApp:
         return {k: sorted(v) for k, v in seen.items()}
 
     def _collect_known_models(self) -> list[str]:
-        """Gather model IDs referenced anywhere in the loaded config."""
+        """Gather model IDs referenced anywhere in the loaded config.
+
+        Cached manifest entries are filtered to the providers currently
+        enabled in this deployment so the dropdowns don't get polluted
+        with Bedrock / Vertex / Cohere / etc. when only a subset of
+        providers is actually configured.
+        """
         seen: set[str] = set()
         if isinstance(self.config.get("defaultModel"), str) and self.config["defaultModel"]:
             seen.add(self.config["defaultModel"])
@@ -1113,8 +1169,46 @@ class AdminApp:
         for m in (self.config.get("pricingOverrides") or {}).keys():
             if isinstance(m, str) and m:
                 seen.add(m)
-        seen.update(pricing_fetcher.all_model_ids(self._cached_manifest))
+        # Cached manifest: include only models from active providers.
+        for provider, inner in self._cached_manifest.items():
+            if not self._is_provider_active(provider):
+                continue
+            for model_id in inner.keys():
+                if isinstance(model_id, str) and model_id:
+                    seen.add(model_id)
         return sorted(seen)
+
+    def _active_provider_names(self) -> set[str]:
+        """Return the set of FreeRouter-native provider names currently enabled.
+
+        A provider is "active" when (a) its Providers-tab toggle is on AND
+        (b) it is not listed in `blockedProviders`. If the Providers tab
+        hasn't been built yet (early init), assume everything is active —
+        the filter degrades gracefully rather than hiding the whole tree.
+        """
+        if not hasattr(self, "provider_enabled") or not self.provider_enabled:
+            return set(KNOWN_PROVIDERS)
+        blocked = {
+            p.strip().lower()
+            for p in (self.blocked_providers_var.get().split(","))
+            if p.strip()
+        } if hasattr(self, "blocked_providers_var") else set()
+        return {
+            name for name, var in self.provider_enabled.items()
+            if var.get() and name.lower() not in blocked
+        }
+
+    def _is_provider_active(self, provider_name: str) -> bool:
+        """True if a fetched provider name maps to an enabled FreeRouter provider."""
+        if not provider_name:
+            return False
+        lower = provider_name.lower()
+        active = self._active_provider_names()
+        for fr_name in active:
+            aliases = PROVIDER_ALIASES.get(fr_name, {fr_name})
+            if lower in {a.lower() for a in aliases}:
+                return True
+        return False
 
     def _load_cached_manifest(self) -> pricing_fetcher.Manifest:
         cached = prefs.load().get("cachedManifest")
