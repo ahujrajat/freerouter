@@ -20,3 +20,19 @@ export {
 } from './pricing-source.js'
 export { RulesEngine } from './rules-engine.js'
 export type { Rule, RuleAction, RuleMatch, RuleDecision, RulesConfig, RulesMode } from './rules-engine.js'
+
+export type { TelemetrySink } from './telemetry-sink.js'
+export { NullTelemetrySink, MemoryTelemetrySink } from './telemetry-sink.js'
+export { TelemetryExporter } from './telemetry-exporter.js'
+export type { TelemetryExporterOptions } from './telemetry-exporter.js'
+
+export { ReplayScorer } from './replay-scorer.js'
+export type {
+  ReplayCandidateConfig,
+  ReplayPricingMap,
+  ReplayDecision,
+  ReplayAggregate,
+} from './replay-scorer.js'
+
+export { ShadowRouter, MemoryShadowSink } from './shadow-router.js'
+export type { ShadowSink, ShadowDecisionRecord } from './shadow-router.js'

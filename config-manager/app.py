@@ -845,6 +845,7 @@ class AdminApp:
         self._build_rules_tab()
         self._build_pricing_tab()
         self._build_byok_tab()
+        self._build_optimization_tab()
         self._build_audit_tab()
         self._build_env_tab()
 
@@ -1028,6 +1029,174 @@ class AdminApp:
     def _toggle_byok_reveal(self) -> None:
         self._reveal_byok.set(not self._reveal_byok.get())
         self._refresh_byok_tree()
+
+    def _build_optimization_tab(self) -> None:
+        """GEPA optimization pipeline — telemetry export, shadow router, and
+        per-request prompt optimization. Stores path-based JSON; the deployment
+        bootstraps these paths into FileTelemetrySink / shadow sink / sidecar
+        bridge instances at startup.
+        """
+        f = ttk.Frame(self.nb, padding=12)
+        self.nb.add(f, text="Optimization")
+        f.columnconfigure(0, weight=1)
+
+        help_text = (
+            "GEPA optimization pipeline (opt-in). Values here are written as\n"
+            "JSON path/threshold metadata. At runtime, your bootstrap code\n"
+            "translates these paths into FileTelemetrySink / shadow sink /\n"
+            "GepaBridge instances — see gepa-sidecar/README.md."
+        )
+        ttk.Label(f, text=help_text, foreground="#555", justify="left", wraplength=820).grid(
+            row=0, column=0, sticky="w", padx=4, pady=(0, 8),
+        )
+
+        # ── Telemetry export ────────────────────────────────────────
+        te = ttk.LabelFrame(f, text="Telemetry export", padding=10)
+        te.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        te.columnconfigure(1, weight=1)
+        self.telemetry_enabled_var = tk.BooleanVar()
+        self.telemetry_path_var = tk.StringVar()
+        self.telemetry_interval_var = tk.StringVar()
+        self.telemetry_buffer_var = tk.StringVar()
+        self.telemetry_max_bytes_var = tk.StringVar()
+        for v in (
+            self.telemetry_enabled_var,
+            self.telemetry_path_var, self.telemetry_interval_var,
+            self.telemetry_buffer_var, self.telemetry_max_bytes_var,
+        ):
+            v.trace_add("write", self._mark_dirty)
+        _grid_check(te, "Enable telemetry export (append-only JSONL)",
+                    self.telemetry_enabled_var, 0, col=0)
+        rows = [
+            ("Output file path", self.telemetry_path_var),
+            ("Flush interval (ms; 0 = manual)", self.telemetry_interval_var),
+            ("Max in-memory buffer size", self.telemetry_buffer_var),
+            ("Rotate when file exceeds bytes (0 = never)", self.telemetry_max_bytes_var),
+        ]
+        for r, (label, var) in enumerate(rows, start=1):
+            _grid_label(te, label, r)
+            _grid_entry(te, var, r)
+
+        # ── Shadow router ──────────────────────────────────────────
+        sh = ttk.LabelFrame(f, text="Shadow router (parallel observation)", padding=10)
+        sh.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        sh.columnconfigure(1, weight=1)
+        self.shadow_enabled_var = tk.BooleanVar()
+        self.shadow_paused_var = tk.BooleanVar()
+        self.shadow_candidate_path_var = tk.StringVar()
+        self.shadow_pricing_path_var = tk.StringVar()
+        self.shadow_sink_path_var = tk.StringVar()
+        for v in (
+            self.shadow_enabled_var, self.shadow_paused_var,
+            self.shadow_candidate_path_var, self.shadow_pricing_path_var,
+            self.shadow_sink_path_var,
+        ):
+            v.trace_add("write", self._mark_dirty)
+        _grid_check(sh, "Enable shadow router", self.shadow_enabled_var, 0, col=0)
+        _grid_check(sh, "Paused (wired but inactive)", self.shadow_paused_var, 0, col=1)
+        rows = [
+            ("Candidate config path (JSON)", self.shadow_candidate_path_var),
+            ("Pricing snapshot path (JSON)", self.shadow_pricing_path_var),
+            ("Decision sink path (JSONL)", self.shadow_sink_path_var),
+        ]
+        for r, (label, var) in enumerate(rows, start=1):
+            _grid_label(sh, label, r)
+            _grid_entry(sh, var, r)
+
+        # ── Prompt optimization (GEPA per-request) ─────────────────
+        po = ttk.LabelFrame(f, text="Prompt optimization (per-request GEPA — 50ms SLA waived)", padding=10)
+        po.grid(row=3, column=0, sticky="ew")
+        po.columnconfigure(1, weight=1)
+
+        self.po_enabled_var = tk.BooleanVar()
+        self.po_mode_var = tk.StringVar(value="template-cached")
+        self.po_target_var = tk.StringVar()
+        self.po_fallback_var = tk.StringVar()
+        self.po_sidecar_url_var = tk.StringVar()
+        self.po_timeout_var = tk.StringVar()
+        self.po_fail_closed_var = tk.BooleanVar(value=True)
+        self.po_classifier_var = tk.StringVar(value="rule-based")
+        self.po_classifier_meta_key_var = tk.StringVar()
+        self.po_cache_scope_var = tk.StringVar(value="org")
+        self.po_cache_max_var = tk.StringVar()
+        self.po_cache_ttl_var = tk.StringVar()
+        self.po_gate_target_price_var = tk.StringVar()
+        self.po_gate_fallback_price_var = tk.StringVar()
+        self.po_gate_min_roi_var = tk.StringVar()
+        self.po_gate_risk_var = tk.StringVar()
+        self.po_gate_reuse_var = tk.StringVar()
+        self.po_gate_cheap_rate_var = tk.StringVar()
+
+        for v in (
+            self.po_enabled_var, self.po_mode_var, self.po_target_var,
+            self.po_fallback_var, self.po_sidecar_url_var, self.po_timeout_var,
+            self.po_fail_closed_var, self.po_classifier_var,
+            self.po_classifier_meta_key_var, self.po_cache_scope_var,
+            self.po_cache_max_var, self.po_cache_ttl_var,
+            self.po_gate_target_price_var, self.po_gate_fallback_price_var,
+            self.po_gate_min_roi_var, self.po_gate_risk_var,
+            self.po_gate_reuse_var, self.po_gate_cheap_rate_var,
+        ):
+            v.trace_add("write", self._mark_dirty)
+
+        _grid_check(po, "Enable per-request prompt optimization", self.po_enabled_var, 0, col=0)
+        _grid_check(po, "Fail closed (route to fallback on sidecar errors)", self.po_fail_closed_var, 0, col=1)
+
+        _grid_label(po, "Mode", 1)
+        _grid_combo(po, self.po_mode_var, ["template-cached", "live-single-task", "off"], 1)
+
+        rows = [
+            ("Target (cheap) model", self.po_target_var),
+            ("Fallback (capable) model", self.po_fallback_var),
+            ("Sidecar URL", self.po_sidecar_url_var),
+            ("Sidecar timeout (ms)", self.po_timeout_var),
+        ]
+        for r, (label, var) in enumerate(rows, start=2):
+            _grid_label(po, label, r)
+            _grid_entry(po, var, r)
+
+        # Classifier
+        r = 2 + len(rows)
+        ttk.Separator(po, orient="horizontal").grid(row=r, columnspan=2, sticky="ew", pady=8)
+        r += 1
+        _grid_label(po, "Classifier strategy", r)
+        _grid_combo(po, self.po_classifier_var, ["rule-based", "metadata", "embed-hash"], r)
+        r += 1
+        _grid_label(po, "Classifier metadata key (for 'metadata')", r)
+        _grid_entry(po, self.po_classifier_meta_key_var, r)
+
+        # Cache
+        r += 1
+        ttk.Separator(po, orient="horizontal").grid(row=r, columnspan=2, sticky="ew", pady=8)
+        r += 1
+        _grid_label(po, "Cache scope", r)
+        _grid_combo(po, self.po_cache_scope_var, ["global", "org", "team", "user"], r)
+        r += 1
+        _grid_label(po, "Cache max entries", r)
+        _grid_entry(po, self.po_cache_max_var, r)
+        r += 1
+        _grid_label(po, "Cache TTL (ms)", r)
+        _grid_entry(po, self.po_cache_ttl_var, r)
+
+        # Complexity gate
+        r += 1
+        ttk.Separator(po, orient="horizontal").grid(row=r, columnspan=2, sticky="ew", pady=8)
+        r += 1
+        ttk.Label(po, text="Complexity gate", foreground="#444").grid(
+            row=r, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 4),
+        )
+        gate_rows = [
+            ("Target input price (USD / 1M tokens)", self.po_gate_target_price_var),
+            ("Fallback input price (USD / 1M tokens)", self.po_gate_fallback_price_var),
+            ("Min ROI (USD per request) to trigger GEPA", self.po_gate_min_roi_var),
+            ("Direct-fallback failure-risk threshold (0–1)", self.po_gate_risk_var),
+            ("Default expected reuse count per class", self.po_gate_reuse_var),
+            ("Default cheap-model success rate (0–1)", self.po_gate_cheap_rate_var),
+        ]
+        for label, var in gate_rows:
+            r += 1
+            _grid_label(po, label, r)
+            _grid_entry(po, var, r)
 
     def _build_audit_tab(self) -> None:
         f = ttk.Frame(self.nb, padding=12)
@@ -1565,6 +1734,8 @@ class AdminApp:
             audit = cfg.get("audit") or {}
             self.audit_enabled_var.set(bool(audit.get("enabled", False)))
 
+            self._load_optimization_into_vars(cfg)
+
             for key, var in self.env_vars.items():
                 var.set(self.env.get(key, ""))
 
@@ -1646,7 +1817,133 @@ class AdminApp:
             cfg.pop("rateLimit", None)
 
         cfg["audit"] = {"enabled": self.audit_enabled_var.get()}
+
+        self._gather_optimization_into_config(cfg)
         return cfg
+
+    # ── Optimization tab serialization ────────────────────────────────────
+
+    def _load_optimization_into_vars(self, cfg: dict[str, Any]) -> None:
+        te = cfg.get("telemetryExport") or {}
+        self.telemetry_enabled_var.set(bool(te.get("enabled", False) or te.get("filePath")))
+        self.telemetry_path_var.set(str(te.get("filePath", "") or ""))
+        self.telemetry_interval_var.set(str(te.get("intervalMs", "") or ""))
+        self.telemetry_buffer_var.set(str(te.get("maxBufferSize", "") or ""))
+        self.telemetry_max_bytes_var.set(str(te.get("maxBytes", "") or ""))
+
+        sh = cfg.get("shadowRouter") or {}
+        self.shadow_enabled_var.set(bool(sh.get("enabled", False) or sh.get("candidatePath")))
+        self.shadow_paused_var.set(bool(sh.get("paused", False)))
+        self.shadow_candidate_path_var.set(str(sh.get("candidatePath", "") or ""))
+        self.shadow_pricing_path_var.set(str(sh.get("pricingPath", "") or ""))
+        self.shadow_sink_path_var.set(str(sh.get("sinkPath", "") or ""))
+
+        po = cfg.get("promptOptimization") or {}
+        self.po_enabled_var.set(bool(po.get("enabled", False)))
+        self.po_mode_var.set(str(po.get("mode", "template-cached") or "template-cached"))
+        self.po_target_var.set(str(po.get("targetModel", "") or ""))
+        self.po_fallback_var.set(str(po.get("fallbackModel", "") or ""))
+        self.po_fail_closed_var.set(bool(po.get("failClosed", True)))
+
+        bridge = po.get("bridge") or {}
+        self.po_sidecar_url_var.set(str(bridge.get("sidecarUrl", "") or ""))
+        self.po_timeout_var.set(str(bridge.get("timeoutMs", "") or ""))
+
+        classifier = po.get("classifier") or {}
+        self.po_classifier_var.set(str(classifier.get("strategy", "rule-based") or "rule-based"))
+        self.po_classifier_meta_key_var.set(str(classifier.get("metadataKey", "") or ""))
+
+        cache = po.get("cache") or {}
+        self.po_cache_scope_var.set(str(cache.get("scope", "org") or "org"))
+        self.po_cache_max_var.set(str(cache.get("maxEntries", "") or ""))
+        self.po_cache_ttl_var.set(str(cache.get("ttlMs", "") or ""))
+
+        gate = po.get("gate") or {}
+        self.po_gate_target_price_var.set(str(gate.get("targetInputPer1M", "") or ""))
+        self.po_gate_fallback_price_var.set(str(gate.get("fallbackInputPer1M", "") or ""))
+        self.po_gate_min_roi_var.set(str(gate.get("minRoiUsd", "") or ""))
+        self.po_gate_risk_var.set(str(gate.get("directFallbackRisk", "") or ""))
+        self.po_gate_reuse_var.set(str(gate.get("defaultExpectedReuse", "") or ""))
+        self.po_gate_cheap_rate_var.set(str(gate.get("defaultCheapModelSuccessRate", "") or ""))
+
+    def _gather_optimization_into_config(self, cfg: dict[str, Any]) -> None:
+        # Telemetry export
+        if self.telemetry_enabled_var.get():
+            te: dict[str, Any] = {"enabled": True}
+            if (path := _empty_to_none(self.telemetry_path_var.get())) is not None:
+                te["filePath"] = path
+            if (i := _safe_int(self.telemetry_interval_var.get())) is not None:
+                te["intervalMs"] = i
+            if (b := _safe_int(self.telemetry_buffer_var.get())) is not None:
+                te["maxBufferSize"] = b
+            if (m := _safe_int(self.telemetry_max_bytes_var.get())) is not None:
+                te["maxBytes"] = m
+            cfg["telemetryExport"] = te
+        else:
+            cfg.pop("telemetryExport", None)
+
+        # Shadow router
+        if self.shadow_enabled_var.get():
+            sh: dict[str, Any] = {"enabled": True, "paused": self.shadow_paused_var.get()}
+            if (p := _empty_to_none(self.shadow_candidate_path_var.get())) is not None:
+                sh["candidatePath"] = p
+            if (p := _empty_to_none(self.shadow_pricing_path_var.get())) is not None:
+                sh["pricingPath"] = p
+            if (p := _empty_to_none(self.shadow_sink_path_var.get())) is not None:
+                sh["sinkPath"] = p
+            cfg["shadowRouter"] = sh
+        else:
+            cfg.pop("shadowRouter", None)
+
+        # Prompt optimization
+        if self.po_enabled_var.get():
+            po: dict[str, Any] = {
+                "enabled": True,
+                "mode": self.po_mode_var.get() or "template-cached",
+                "failClosed": self.po_fail_closed_var.get(),
+            }
+            if (m := _empty_to_none(self.po_target_var.get())) is not None:
+                po["targetModel"] = m
+            if (m := _empty_to_none(self.po_fallback_var.get())) is not None:
+                po["fallbackModel"] = m
+
+            bridge: dict[str, Any] = {}
+            if (u := _empty_to_none(self.po_sidecar_url_var.get())) is not None:
+                bridge["sidecarUrl"] = u
+            if (t := _safe_int(self.po_timeout_var.get())) is not None:
+                bridge["timeoutMs"] = t
+            if bridge:
+                po["bridge"] = bridge
+
+            classifier: dict[str, Any] = {"strategy": self.po_classifier_var.get() or "rule-based"}
+            if (k := _empty_to_none(self.po_classifier_meta_key_var.get())) is not None:
+                classifier["metadataKey"] = k
+            po["classifier"] = classifier
+
+            cache: dict[str, Any] = {"scope": self.po_cache_scope_var.get() or "org"}
+            if (e := _safe_int(self.po_cache_max_var.get())) is not None:
+                cache["maxEntries"] = e
+            if (e := _safe_int(self.po_cache_ttl_var.get())) is not None:
+                cache["ttlMs"] = e
+            po["cache"] = cache
+
+            gate: dict[str, Any] = {}
+            for key, var, parser in (
+                ("targetInputPer1M",            self.po_gate_target_price_var,   _safe_float),
+                ("fallbackInputPer1M",          self.po_gate_fallback_price_var, _safe_float),
+                ("minRoiUsd",                   self.po_gate_min_roi_var,        _safe_float),
+                ("directFallbackRisk",          self.po_gate_risk_var,           _safe_float),
+                ("defaultExpectedReuse",        self.po_gate_reuse_var,          _safe_int),
+                ("defaultCheapModelSuccessRate", self.po_gate_cheap_rate_var,    _safe_float),
+            ):
+                value = parser(var.get())
+                if value is not None:
+                    gate[key] = value
+            po["gate"] = gate
+
+            cfg["promptOptimization"] = po
+        else:
+            cfg.pop("promptOptimization", None)
 
     def validate_only(self) -> bool:
         cfg = self._gather_into_config()

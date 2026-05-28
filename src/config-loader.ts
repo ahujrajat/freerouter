@@ -149,6 +149,9 @@ const KNOWN_KEYS = new Set<string>([
   'maxInputLength', 'promptInjectionGuard', 'requestSigning',
   'blockedProviders', 'allowedModels', 'rateLimit', 'budgets',
   'providers', 'audit', 'pricingOverrides',
+  // GEPA optimization pipeline — file-loadable subsets. Runtime callbacks
+  // (sink instances, etc.) are wired programmatically over these fields.
+  'telemetryExport', 'shadowRouter', 'promptOptimization',
 ])
 
 /**

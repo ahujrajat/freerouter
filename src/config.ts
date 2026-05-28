@@ -12,6 +12,13 @@ import type { PricingSource } from './finops/pricing-source.js'
 import type { CostOptimizationConfig } from './finops/cost-router.js'
 import type { Rule, RulesMode } from './finops/rules-engine.js'
 import type { RulesSource } from './adapters/file-rules-source.js'
+import type { TelemetrySink } from './finops/telemetry-sink.js'
+import type { ReplayCandidateConfig, ReplayPricingMap } from './finops/replay-scorer.js'
+import type { ShadowSink } from './finops/shadow-router.js'
+import type { ClassifierConfig } from './optimization/classifier.js'
+import type { PromptCacheConfig } from './optimization/prompt-cache.js'
+import type { GepaBridgeConfig } from './optimization/gepa-bridge.js'
+import type { ComplexityGateConfig } from './optimization/complexity-gate.js'
 
 export interface ProviderToggle {
   /** Set to false to skip registering this built-in provider. Default: true */
@@ -49,6 +56,80 @@ export interface PricingRefreshConfig {
    * Recommended: 3_600_000 (1 hour).
    */
   intervalMs?: number
+}
+
+/**
+ * Per-request prompt optimization via GEPA.
+ *
+ * Default `enabled: false`. When enabled, eligible requests (passing the
+ * complexity gate) call out to the GEPA sidecar before dispatch. Latency
+ * budget is explicitly relaxed for opted-in classes — see the per-request
+ * mode addendum to the integration plan.
+ */
+export interface PromptOptimizationConfig {
+  enabled: boolean
+  /**
+   * 'template-cached' (default): GEPA optimizes a system prompt for a class
+   * of requests; subsequent matching requests hit the cache for free.
+   * 'live-single-task': every request triggers a fresh optimization (expensive;
+   * requires a host-supplied evaluator via metadata).
+   * 'off': pipeline is wired but the gate always returns direct-target.
+   */
+  mode: 'template-cached' | 'live-single-task' | 'off'
+
+  /** The cheap target model the optimizer adapts prompts for. */
+  targetModel: string
+  /** The capable fallback used when optimization is skipped or fails. */
+  fallbackModel: string
+
+  /** Sidecar HTTP client config. */
+  bridge: GepaBridgeConfig
+  /** Cache for optimized templates. */
+  cache?: PromptCacheConfig
+  /** Request classifier (default: rule-based). */
+  classifier?: ClassifierConfig
+  /** Complexity gate thresholds. */
+  gate: ComplexityGateConfig
+
+  /**
+   * When the sidecar is unreachable, route to `fallbackModel` instead of the
+   * unmodified `targetModel`. Safer default for production. Default: true.
+   */
+  failClosed?: boolean
+}
+
+export interface ShadowRouterConfig {
+  /** Candidate config the shadow evaluates in parallel with live routing. */
+  candidate: ReplayCandidateConfig
+  /** Pricing snapshot used by the shadow (independent of live registry pricing). */
+  pricing: ReplayPricingMap
+  /** Where shadow decisions are written. Typically a JSONL adapter. */
+  sink: ShadowSink
+  /**
+   * When true, the shadow is disabled but the wiring remains so it can be
+   * hot-toggled without restart. Default: false (active when present).
+   */
+  paused?: boolean
+}
+
+export interface TelemetryExportConfig {
+  /**
+   * Append-only sink for completed-request `SpendRecord`s.
+   * Use `FileTelemetrySink` for single-process deployments.
+   * Implement `TelemetrySink` for custom backends (Kafka, S3, lakehouse, etc.).
+   */
+  sink: TelemetrySink
+  /**
+   * Auto-flush interval in ms. Records buffer in-memory between flushes.
+   * Set to 0 or omit to disable scheduled flushing (manual `router.flushTelemetry()` only).
+   * Recommended: 60_000 (1 min) for production workloads.
+   */
+  intervalMs?: number
+  /**
+   * Max in-memory buffer size before the oldest records are dropped.
+   * Default: 10_000.
+   */
+  maxBufferSize?: number
 }
 
 export interface RulesRefreshConfig {
@@ -137,6 +218,26 @@ export interface RouterConfig {
    * Records are loaded on `router.init()` and saved on schedule / shutdown.
    */
   spendPersistence?: SpendPersistenceConfig
+
+  /**
+   * Stream every completed-request `SpendRecord` to an append-only telemetry sink.
+   * Independent of `spendPersistence`: the store is a snapshot of the in-memory
+   * window; the sink is a forward-only event log for offline pipelines.
+   */
+  telemetryExport?: TelemetryExportConfig
+
+  /**
+   * Run a candidate RouterConfig in parallel with live routing. Shadow decisions
+   * are recorded but never affect the live response. Use this to canary an
+   * optimized config (typically produced by the GEPA pipeline) safely.
+   */
+  shadowRouter?: ShadowRouterConfig
+
+  /**
+   * Per-request GEPA prompt optimization (opt-in; the 50ms SLA is waived
+   * for requests that pass the complexity gate). Off unless `enabled: true`.
+   */
+  promptOptimization?: PromptOptimizationConfig
 
   /**
    * Automatically select a cheaper candidate model for eligible requests.

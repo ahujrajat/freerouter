@@ -20,6 +20,7 @@ It enforces military-grade key isolation, protects against prompt injection, and
 - ⚙️ **Pluggable & Config-Driven** — configure via code, JSON, YAML, or TOML. Unused providers are never instantiated.
 - 📡 **Native Streaming** — full `AsyncGenerator` support for all providers.
 - 🛠️ **Optional Configuration Manager** — standalone, cross-platform Python desktop GUI for admins to edit config, rules, env vars, and BYOK keys. Includes one-click live-pricing fetch from LiteLLM / OpenRouter. Lives outside the npm package — zero coupling to the core router.
+- 🧬 **GEPA Optimization Pipeline (opt-in)** — telemetry export, shadow-router canary, and per-request prompt optimization via the [GEPA `optimize_anything`](https://gepa-ai.github.io/gepa/api/) sidecar. Closed-loop ROI ledger disables loss-making classes automatically; quality gate (LLM-judge, pairwise+swap) blocks regressions before any optimized template is cached.
 
 ### Supported Providers
 - Google Gemini (`gemini`)
@@ -471,6 +472,168 @@ router.registerProvider(new InternalProvider())
 
 ---
 
+## GEPA Optimization Pipeline (opt-in)
+
+FreeRouter ships a complete integration with [GEPA's `optimize_anything`](https://gepa-ai.github.io/gepa/api/) — LLM-guided evolutionary optimization of text artifacts. Two distinct surfaces:
+
+| Surface | What it optimizes | When it runs | Latency impact |
+|---|---|---|---|
+| **Offline** | `RouterConfig` artifacts: admin rules, candidate-model lists, budget thresholds | Between traffic windows (cron / on-demand) | None — runs in a Python sidecar |
+| **Per-request** | A *system prompt* that makes a cheap model produce reference-quality output for a class of requests | On the first request of a class (cache miss); cached forever after | **Opts out of the 50ms SLA** for that one cache-miss; cache hits add ≤1ms |
+
+The TS side ships in the bundle; the optimizer itself runs in a Python sidecar so the core router stays under the 50KB / 50ms targets when optimization is disabled (the default).
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  FreeRouter (TS bundle, ~50KB)                                      │
+│                                                                     │
+│  request → validator → rules → ComplexityGate → cache               │
+│                       │           │              │                  │
+│                       │           │              hit  → cheap model │
+│                       │           │              miss → bridge ───→ │
+│                       │           direct-target ─────→ cheap model  │
+│                       │           fallback ──────────→ good model   │
+│                       block                                         │
+│                                                                     │
+│  ShadowRouter (parallel)   →  ShadowSink (JSONL)                    │
+│  TelemetryExporter         →  FileTelemetrySink (append-only JSONL) │
+└──────────────────────────────────────────────────────────────────┬──┘
+                                                                   │
+                                                          HTTP / file
+                                                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  gepa-sidecar/ (Python)                                             │
+│                                                                     │
+│  /optimize  → optimize_anything(seed, evaluator=LLMJudge_pairs)     │
+│               → final quality gate → return template                │
+│  /ledger    → append realized-savings entries                       │
+│                                                                     │
+│  optimize_config.py (offline): replays telemetry through real TS    │
+│  scorer (scripts/score-candidate.ts), evolves admin-rules /         │
+│  candidate-models / budgets dicts, writes optimized config back     │
+│  for hot-reload.                                                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Enable the offline optimizer
+
+1. **Capture telemetry**: turn on `telemetryExport` (config-manager → Optimization tab, or JSON):
+   ```jsonc
+   "telemetryExport": {
+     "enabled": true,
+     "filePath":      "./telemetry/spend.jsonl",
+     "intervalMs":    60000,
+     "maxBufferSize": 10000
+   }
+   ```
+   At runtime, your bootstrap wires the path into `FileTelemetrySink` and passes it into `RouterConfig.telemetryExport.sink`. Records stream to disk forever-forward; the optimizer reads them later.
+
+2. **Generate the JSON Schema** (the sidecar's validator gates evolved candidates against it):
+   ```bash
+   tsx scripts/emit-config-schema.ts
+   ```
+
+3. **Run the optimizer**:
+   ```bash
+   cd gepa-sidecar
+   pip install -e .
+   python -m gepa_sidecar.optimize_config \
+     --seed       ../freerouter.config.json \
+     --telemetry  ../telemetry/spend.jsonl \
+     --pricing    ../pricing-snapshot.json \
+     --out        ../freerouter.config.optimized.json \
+     --budget     medium
+   ```
+   GEPA evolves `(adminRules, candidateModels, budget alertThresholds)` against the **real** TS routing logic — `scripts/score-candidate.ts` is invoked via subprocess so parity is guaranteed.
+
+4. **Canary the result with the shadow router** before adopting:
+   ```jsonc
+   "shadowRouter": {
+     "enabled": true,
+     "candidatePath": "./freerouter.config.optimized.json",
+     "pricingPath":   "./pricing-snapshot.json",
+     "sinkPath":      "./shadow-decisions.jsonl"
+   }
+   ```
+   The shadow recomputes every routing decision in parallel and logs it; it never affects the live response. Compare `liveModel` vs `shadowModel` and cost deltas over a few hours before promoting the candidate to `freerouter.config.json`.
+
+### Enable per-request prompt optimization
+
+For workloads where you'd rather pay GEPA once-per-class than pay for the expensive model on every request:
+
+```jsonc
+"promptOptimization": {
+  "enabled": true,
+  "mode":     "template-cached",
+  "targetModel":   "gpt-4o-mini",        // the cheap model we want to use
+  "fallbackModel": "gpt-4o",             // the good model for fallback + reference
+  "bridge":     { "sidecarUrl": "http://127.0.0.1:8765" },
+  "cache":      { "scope": "org", "ttlMs": 86400000, "maxEntries": 5000 },
+  "classifier": { "strategy": "rule-based" },
+  "gate": {
+    "targetInputPer1M":   0.15,
+    "fallbackInputPer1M": 2.50,
+    "minRoiUsd":          0.002,
+    "directFallbackRisk": 0.85
+  },
+  "failClosed": true
+}
+```
+
+Start the sidecar:
+```bash
+GEPA_REFS_DIR=./gepa-references \
+GEPA_LEDGER_PATH=./gepa-ledger.jsonl \
+ANTHROPIC_API_KEY=... \
+python -m gepa_sidecar.server
+```
+
+How a request flows when this is on:
+
+1. `ComplexityGate.evaluate(req)` computes a 9-feature complexity score (token count, instruction count, code/format/reasoning/nesting/constraints/references) and combines it with `OptimizationLedger.classPrior(class)` to produce `ExpectedROI = failureRisk × tokenSavings × reuse × prior`.
+2. **`ExpectedROI ≥ minRoiUsd`** → look up the class in `PromptCache`. Cache hit → prepend optimized system prompt → dispatch to `targetModel`. Cache miss → call sidecar (this is the only path that breaches 50ms).
+3. **`failureRisk ≥ directFallbackRisk`** → skip cheap, dispatch to `fallbackModel` directly. Avoids burning GEPA on prompts where the cheap model won't work anyway.
+4. **Otherwise** → dispatch to `targetModel` with the original prompt. Most traffic lands here.
+
+Sidecar guarantees before a template is cached:
+- ≥ `min_references` reference outputs on disk for the class (offline-harvested via your shadow router or expensive-model bootstrap).
+- Held-out quality gate: `LLMJudge` runs pairwise A/B (with position-swap) on N samples; mean score must clear `min_quality_score`.
+- Per-call USD budget (`maxReflectionUsd`) and wall-time (`maxOptimizationSeconds`) enforced.
+
+The ROI ledger closes the loop: after each request served by an optimized template, the realized savings are recorded; classes whose cumulative `realizedSavingsUsd < optimizationUsd` after `minObservationRequests` get flagged `optimization_disabled` for a cooldown window — subsequent requests skip the GEPA call entirely.
+
+### Production-grade LLM judge
+
+[gepa-sidecar/src/gepa_sidecar/judge.py](gepa-sidecar/src/gepa_sidecar/judge.py) — uses Anthropic's Claude with:
+
+- **Pairwise A/B with position swap** — every pair judged twice, arguments swapped, scores averaged. Suppresses positional bias.
+- **Prompt caching** on the system rubric (`cache_control: ephemeral`). A batch of N judgments pays the full input price once, then cache-read prices (≈10% of full).
+- **Adaptive retry** with jittered exponential backoff on connection/timeout/429/5xx; truncated responses (`stop_reason: max_tokens`) are retried.
+- **Bounded concurrency** via `asyncio.Semaphore` so big optimization batches don't DoS the judge endpoint.
+- **Structured-output validation**: tolerant JSON extraction, every numeric field clamped to `[0,1]`, NaN → 0.
+- **Production cost accounting**: separates regular input, cache-creation, and cache-read tokens for accurate per-call USD.
+- **Correctness dominance**: aggregate weights are chosen so a perfect-correctness response beats one that scores 1.0 on every other dimension but 0.0 on correctness — enforced by unit test.
+
+### When to use which mode
+
+| Workload | Recommended setting |
+|---|---|
+| Low-volume, prompt-rich application | `promptOptimization.enabled=true`, `mode=template-cached`. Burn GEPA once per class, pocket the per-request savings forever after. |
+| High-volume routing with stable rules | Offline only. Run `optimize_config` weekly against the past week of telemetry, hot-reload the optimized config. Zero per-request overhead. |
+| Risk-averse rollout of any config change | Always run `shadowRouter` for a 24–72h window before promoting. The shadow has zero impact on live responses. |
+| New deployment with no telemetry yet | Leave both off until you have ≥1k records of telemetry. Cold-start optimization is high-variance. |
+
+### Hard guarantees when disabled
+
+When neither `telemetryExport`, `shadowRouter`, nor `promptOptimization` are configured:
+- Zero new code executes on the request path (one nullish-check per request).
+- Bundle size unchanged at ~50KB (tree-shaking eliminates the optimization modules).
+- 50ms SLA unchanged.
+
+---
+
 ## Optional Configuration Manager (GUI)
 
 For operators who'd rather click than hand-edit JSON, FreeRouter ships an **optional, fully standalone** desktop configuration manager at [config-manager/](config-manager/). It is deliberately excluded from the published npm package (the `files: ["dist"]` allowlist in `package.json` ships only compiled router code), so the runtime has zero dependency on it — install, ignore, or delete it without consequence.
@@ -507,6 +670,7 @@ First launch prints the admin key once — save it somewhere safe. Use `--reset-
 | Rules | Full CRUD over `Rule[]` — match predicates, pin / strategy / block actions, priority |
 | Pricing Overrides | Per-model `input` / `output` / `cachedInput` USD-per-1M-tokens. Includes a **Fetch models & pricing…** button with one-click presets for LiteLLM / OpenRouter (or a custom URL); selected rows can be imported as overrides |
 | BYOK Keys | Full CRUD over per-`(userId, provider)` API keys. Saved to `~/.freerouter-admin/byok-keys.json` (mode `0600`, per-user trust boundary) — kept out of `freerouter.config.json` and `.env` so secrets don't end up in source control |
+| Optimization | GEPA pipeline opt-ins: `telemetryExport` (path + interval + buffer), `shadowRouter` (candidate / pricing / sink paths + paused toggle), and `promptOptimization` (target/fallback models, sidecar URL, classifier + cache + complexity-gate thresholds). Values are written as path-based JSON; deployment bootstrap converts paths to `FileTelemetrySink` / sink / bridge instances |
 | Audit | Toggle `audit.enabled` |
 | Env Vars | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN` — written to `.env` |
 

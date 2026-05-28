@@ -1,0 +1,36 @@
+This slide visually summarizes the integrated AI development ecosystem as depicted in your diagram. You can import this into PowerPoint and adjust colors or branding as needed.
+
+---
+Title: Integrated AI Development Ecosystem
+
+[Central large rectangle]
+VS Code
+  - LLMs: Gemini, Anthropic, ...
+
+[Left side, three boxes vertically]
+- MSFT
+- Gemini
+- Claude Code
+
+[Middle left, three stacked boxes]
+- Skill
+- SubAgents
+- Tools
+
+[Top center]
+- McD Git
+
+[Right side, two boxes]
+- JIRA
+- Conf
+
+[Arrows/lines:]
+- MSFT, Gemini, Claude Code → Skill, SubAgents, Tools
+- Skill, SubAgents, Tools → VS Code
+- McD Git → VS Code
+- JIRA, Conf → VS Code
+
+Footer: Confidential – Accenture Proprietary
+---
+
+Note: For a true PPTX file with shapes and connectors, use a tool like PowerPoint, Google Slides, or an online diagram generator. If you want an auto-generated PPTX file, let me know if you want a simple text slide or a diagram slide (with shapes and arrows).

@@ -9,7 +9,11 @@
 export { FreeRouter } from './router.js'
 
 // Config
-export type { RouterConfig, ProviderToggle, SpendPersistenceConfig, PricingRefreshConfig, RulesRefreshConfig } from './config.js'
+export type {
+  RouterConfig, ProviderToggle, SpendPersistenceConfig, PricingRefreshConfig,
+  RulesRefreshConfig, TelemetryExportConfig, ShadowRouterConfig,
+  PromptOptimizationConfig,
+} from './config.js'
 
 // Config file loader
 export { loadConfigFile, loadConfigFromEnv, mergeConfigs, validateConfigKeys } from './config-loader.js'
@@ -64,6 +68,20 @@ export type {
 // FinOps — persistence
 export type { SpendStore } from './finops/spend-store.js'
 export { MemorySpendStore } from './finops/spend-store.js'
+
+// FinOps — telemetry export (offline pipelines / GEPA optimizer)
+export type { TelemetrySink } from './finops/telemetry-sink.js'
+export { NullTelemetrySink, MemoryTelemetrySink } from './finops/telemetry-sink.js'
+export { TelemetryExporter } from './finops/telemetry-exporter.js'
+export type { TelemetryExporterOptions } from './finops/telemetry-exporter.js'
+
+// FinOps — replay scoring + shadow router (GEPA pipeline)
+export { ReplayScorer } from './finops/replay-scorer.js'
+export type {
+  ReplayCandidateConfig, ReplayPricingMap, ReplayDecision, ReplayAggregate,
+} from './finops/replay-scorer.js'
+export { ShadowRouter, MemoryShadowSink } from './finops/shadow-router.js'
+export type { ShadowSink, ShadowDecisionRecord } from './finops/shadow-router.js'
 
 // FinOps — pricing sources
 export type {

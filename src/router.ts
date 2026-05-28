@@ -33,6 +33,9 @@ import { PolicyEngine } from './finops/policy-engine.js'
 import { CostRouter } from './finops/cost-router.js'
 import { RulesEngine, type Rule, type RuleDecision } from './finops/rules-engine.js'
 import { calculateCost, estimatePromptTokens } from './finops/cost-calculator.js'
+import { TelemetryExporter } from './finops/telemetry-exporter.js'
+import { ShadowRouter } from './finops/shadow-router.js'
+import { OptimizationPipeline } from './optimization/pipeline.js'
 import { loadConfigFile, loadConfigFromEnv, mergeConfigs, validateConfigKeys } from './config-loader.js'
 import { TypedEventEmitter } from './router-events.js'
 import { MetricsCollector } from './metrics-collector.js'
@@ -50,6 +53,9 @@ export class FreeRouter {
   private readonly policyEngine: PolicyEngine
   private readonly costRouter: CostRouter | undefined
   private readonly rulesEngine: RulesEngine | undefined
+  private readonly telemetryExporter: TelemetryExporter | undefined
+  private readonly shadowRouter: ShadowRouter | undefined
+  private readonly optimizationPipeline: OptimizationPipeline | undefined
   private readonly config: RouterConfig
   private readonly policies: BudgetPolicy[]
 
@@ -179,6 +185,22 @@ export class FreeRouter {
         ? new RulesEngine({ rules: [], mode: 'pin-wins' })
         : undefined
 
+    this.telemetryExporter = config.telemetryExport !== undefined
+      ? new TelemetryExporter({
+          sink: config.telemetryExport.sink,
+          ...(config.telemetryExport.intervalMs !== undefined && { intervalMs: config.telemetryExport.intervalMs }),
+          ...(config.telemetryExport.maxBufferSize !== undefined && { maxBufferSize: config.telemetryExport.maxBufferSize }),
+        })
+      : undefined
+
+    this.shadowRouter = config.shadowRouter !== undefined && config.shadowRouter.paused !== true
+      ? new ShadowRouter(config.shadowRouter.candidate, config.shadowRouter.pricing)
+      : undefined
+
+    this.optimizationPipeline = config.promptOptimization?.enabled === true
+      ? new OptimizationPipeline(config.promptOptimization)
+      : undefined
+
     // Seed known providers from the initial registry
     for (const name of this.registry.list()) {
       this.allKnownProviders.add(name.toLowerCase())
@@ -242,6 +264,9 @@ export class FreeRouter {
       }
     }
 
+    // Start telemetry export (no-op if no interval configured)
+    this.telemetryExporter?.start()
+
     // Load initial admin rules from the configured source
     if (this.config.rulesRefresh !== undefined && this.rulesEngine !== undefined) {
       await this.refreshRules()
@@ -265,6 +290,15 @@ export class FreeRouter {
     const store = this.config.spendPersistence?.store
     if (store === undefined) return
     await store.save(this.tracker.allRecords())
+  }
+
+  /**
+   * Drain the in-memory telemetry buffer to the configured `TelemetrySink`.
+   * No-op when no `telemetryExport` config is set. Safe to call any time.
+   */
+  async flushTelemetry(): Promise<void> {
+    if (this.telemetryExporter === undefined) return
+    await this.telemetryExporter.flush()
   }
 
   /**
@@ -368,6 +402,9 @@ export class FreeRouter {
       this.rulesRefreshTimer = undefined
     }
     await this.flushSpend()
+    if (this.telemetryExporter !== undefined) {
+      await this.telemetryExporter.stop()
+    }
     for (const [signal, handler] of this.exitHandlers) {
       process.removeListener(signal, handler)
     }
@@ -532,11 +569,21 @@ export class FreeRouter {
       throw new Error(`[FreeRouter] Request blocked by rule "${ruleDecision.ruleId}": ${ruleDecision.reason}`)
     }
 
-    // ── Cost optimization (mediated by rule mode) ──
-    const optimizedModel = this.applyRuleAndCost(req, ruleDecision)
-    const effectiveReq: ChatRequest = optimizedModel !== req.model
-      ? { ...req, model: optimizedModel }
-      : req
+    // ── Per-request prompt optimization (overrides cost/rules when enabled) ──
+    const pipelineOutcome = this.optimizationPipeline !== undefined
+      ? await this.optimizationPipeline.apply(req, context, userId)
+      : undefined
+
+    let effectiveReq: ChatRequest
+    if (pipelineOutcome !== undefined) {
+      const withModel: ChatRequest = { ...req, model: pipelineOutcome.model }
+      effectiveReq = pipelineOutcome.systemPrompt !== undefined
+        ? this.optimizationPipeline!.injectSystemPrompt(withModel, pipelineOutcome.systemPrompt)
+        : withModel
+    } else {
+      const optimizedModel = this.applyRuleAndCost(req, ruleDecision)
+      effectiveReq = optimizedModel !== req.model ? { ...req, model: optimizedModel } : req
+    }
 
     const decision = this.policyEngine.evaluate(userId, effectiveReq, context)
     if (!decision.allowed) {
@@ -564,7 +611,7 @@ export class FreeRouter {
     }
 
     const hmacKey = this.keyManager.deriveHmacKey(userId)
-    const { contentHash } = this.signer.sign({ signingKey: hmacKey, userId, model: modelName, messages: req.messages })
+    const { contentHash } = this.signer.sign({ signingKey: hmacKey, userId, model: modelName, messages: finalReq.messages })
 
     const start = Date.now()
     let response!: ChatResponse
@@ -588,6 +635,23 @@ export class FreeRouter {
     const record = this.buildRecord(userId, provider.name, modelName, response, context)
     this.metricsCollector.recordRequest(providerKey, response.latencyMs, record.costUsd, 'success')
     this.tracker.recordSpend(record)
+    this.telemetryExporter?.capture(record)
+    this.runShadow(userId, req, context, modelName, record)
+
+    if (this.optimizationPipeline !== undefined && pipelineOutcome !== undefined &&
+        pipelineOutcome.gate.action === 'optimize') {
+      const fallbackPricing = this.registry.getModelPricing(provider.name, this.config.promptOptimization!.fallbackModel)
+      const fallbackCost = fallbackPricing !== undefined
+        ? (record.tokens.promptTokens * fallbackPricing.input + record.tokens.completionTokens * fallbackPricing.output) / 1_000_000
+        : record.costUsd
+      this.optimizationPipeline.recordUsage({
+        classSignature: pipelineOutcome.gate.classification.signature,
+        ctx: context,
+        actualCostUsd: record.costUsd,
+        fallbackCostUsd: fallbackCost,
+      })
+    }
+
     this.config.onRequestComplete?.(record)
 
     this.audit.requestSent({
@@ -630,11 +694,21 @@ export class FreeRouter {
       throw new Error(`[FreeRouter] Request blocked by rule "${ruleDecision.ruleId}": ${ruleDecision.reason}`)
     }
 
-    // ── Cost optimization (mediated by rule mode) ──
-    const optimizedModel = this.applyRuleAndCost(req, ruleDecision)
-    const effectiveReq: ChatRequest = optimizedModel !== req.model
-      ? { ...req, model: optimizedModel }
-      : req
+    // ── Per-request prompt optimization (overrides cost/rules when enabled) ──
+    const pipelineOutcome = this.optimizationPipeline !== undefined
+      ? await this.optimizationPipeline.apply(req, context, userId)
+      : undefined
+
+    let effectiveReq: ChatRequest
+    if (pipelineOutcome !== undefined) {
+      const withModel: ChatRequest = { ...req, model: pipelineOutcome.model }
+      effectiveReq = pipelineOutcome.systemPrompt !== undefined
+        ? this.optimizationPipeline!.injectSystemPrompt(withModel, pipelineOutcome.systemPrompt)
+        : withModel
+    } else {
+      const optimizedModel = this.applyRuleAndCost(req, ruleDecision)
+      effectiveReq = optimizedModel !== req.model ? { ...req, model: optimizedModel } : req
+    }
 
     const decision = this.policyEngine.evaluate(userId, effectiveReq, context)
     if (!decision.allowed) {
@@ -662,7 +736,7 @@ export class FreeRouter {
     }
 
     const hmacKey = this.keyManager.deriveHmacKey(userId)
-    const { contentHash } = this.signer.sign({ signingKey: hmacKey, userId, model: modelName, messages: req.messages })
+    const { contentHash } = this.signer.sign({ signingKey: hmacKey, userId, model: modelName, messages: finalReq.messages })
 
     const start = Date.now()
     const providerKey = provider.name.toLowerCase()
@@ -695,6 +769,8 @@ export class FreeRouter {
     if (finalChunk?.usage !== undefined) {
       const record = this.buildStreamRecord(userId, provider.name, modelName, finalChunk, context)
       this.tracker.recordSpend(record)
+      this.telemetryExporter?.capture(record)
+      this.runShadow(userId, req, context, modelName, record)
       this.config.onRequestComplete?.(record)
       this.audit.requestSent({
         userId,
@@ -819,6 +895,31 @@ export class FreeRouter {
 
     // 'block' decisions are handled upstream before reaching this helper.
     return req.model
+  }
+
+  /**
+   * Fire-and-forget shadow evaluation. Errors are swallowed (logged to stderr)
+   * so a misbehaving shadow can never affect the live response.
+   */
+  private runShadow(
+    userId: string,
+    req: ChatRequest,
+    context: RequestContext,
+    liveModel: string,
+    record: SpendRecord,
+  ): void {
+    const shadow = this.shadowRouter
+    const cfg = this.config.shadowRouter
+    if (shadow === undefined || cfg === undefined) return
+    shadow.recordActualSpend(record)
+    void shadow.observe({
+      userId, req, ctx: context,
+      liveModel,
+      liveCostUsd: record.costUsd,
+      sink: cfg.sink,
+    }).catch(err => {
+      process.stderr.write(`[FreeRouter] shadow router error: ${String(err)}\n`)
+    })
   }
 
   private trackInflight(providerKey: string, promise: Promise<unknown>): void {
