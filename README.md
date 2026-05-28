@@ -10,7 +10,7 @@ It enforces military-grade key isolation, protects against prompt injection, and
 
 ## Features
 
-- ⚡ **Zero runtime dependencies** — smaller than 50 KB bundled, no supply-chain risk.
+- ⚡ **Zero runtime dependencies** — ~62 KB main ESM chunk, no supply-chain risk (sub-path imports load minimal additional code).
 - 🔐 **AES-256-GCM Key At-Rest** — credentials are never exposed, injected only at the moment of HTTP transfer, and zero-filled from memory immediately.
 - 💰 **Enterprise FinOps** — cascading budgets (`global → org → dept → team → user`), per-model caps, spend forecasting, and ERP-ready chargeback reporting.
 - 💾 **Spend Persistence** — durable spend history across restarts via `FileSpendStore` or any custom `SpendStore` adapter. Ad-hoc, scheduled, and always-on-exit flushing.
@@ -29,7 +29,7 @@ It enforces military-grade key isolation, protects against prompt injection, and
 - Mistral (`mistral`, `mixtral`, `codestral`)
 - Groq (`llama`, `gemma`)
 
-*(Chinese models/providers like DeepSeek, Qwen, etc. are explicitly unsupported/blocked by default registry policy.)*
+*(The shipped example config — [`freerouter.config.json`](freerouter.config.json) — pre-populates `blockedProviders` with `deepseek`, `qwen`, `zhipu`, `baichuan`, `minimax`. The block enforcement itself lives in [`src/providers/registry.ts`](src/providers/registry.ts) — any provider name passed via `RouterConfig.blockedProviders` is rejected at registration time. Edit the example config to lift the default deny-list, or remove specific entries.)*
 
 ---
 
@@ -481,7 +481,7 @@ FreeRouter ships a complete integration with [GEPA's `optimize_anything`](https:
 | **Offline** | `RouterConfig` artifacts: admin rules, candidate-model lists, budget thresholds | Between traffic windows (cron / on-demand) | None — runs in a Python sidecar |
 | **Per-request** | A *system prompt* that makes a cheap model produce reference-quality output for a class of requests | On the first request of a class (cache miss); cached forever after | **Opts out of the 50ms SLA** for that one cache-miss; cache hits add ≤1ms |
 
-The TS side ships in the bundle; the optimizer itself runs in a Python sidecar so the core router stays under the 50KB / 50ms targets when optimization is disabled (the default).
+The TS side ships in the bundle; the optimizer itself runs in a Python sidecar so the core router stays under its sub-5ms request-path target when optimization is disabled (the default). When enabled, the per-request mode explicitly waives the request-path SLA for cache-miss paths only — see the table above.
 
 ### Architecture
 
@@ -628,9 +628,9 @@ The ROI ledger closes the loop: after each request served by an optimized templa
 ### Hard guarantees when disabled
 
 When neither `telemetryExport`, `shadowRouter`, nor `promptOptimization` are configured:
-- Zero new code executes on the request path (one nullish-check per request).
-- Bundle size unchanged at ~50KB (tree-shaking eliminates the optimization modules).
-- 50ms SLA unchanged.
+- Zero new code executes on the request path beyond a single nullish-check per request (`this.optimizationPipeline === undefined`).
+- The optimization modules add roughly 8 KB to the main ESM chunk (~62 KB total); the runtime cost is zero when no optimization config is set.
+- Sub-5ms request-path overhead unchanged.
 
 ---
 
@@ -718,8 +718,8 @@ Cross-cutting summary of every built-in security control. Each row points at the
 |---|---|
 | `blockedProviders` | Provider registration is rejected at startup for any name in this list — the provider class is never instantiated. |
 | Admin model block / unblock | `router.blockModel()` / `unblockModel()` for runtime compliance holds; reversible and preserves pricing history (unlike `removeModel()`). |
-| Default Chinese-provider deny-list | `providers/registry.ts` blocks DeepSeek, Qwen, Zhipu, etc. by default policy; cannot be re-registered without explicit override. |
-| Structured audit trail | Every `key:set`, `key:rotated`, `key:deleted`, `request:sent`, `request:blocked`, `policy:violated`, `model:added`, `model:removed`, `rule:matched` event produces a typed `AuditEntry`. Plug any sink via `AuditSink`. |
+| Default Chinese-provider deny-list | The shipped [`freerouter.config.json`](freerouter.config.json) pre-populates `blockedProviders` with DeepSeek, Qwen, Zhipu, Baichuan, Minimax. The registry enforces this list at registration time — blocked names cannot be re-registered without the operator first editing the config. |
+| Structured audit trail | Every `key:set`, `key:rotated`, `key:deleted`, `key:expired`, `request:sent`, `request:blocked`, `budget:warning`, `budget:exceeded`, `forecast:at-risk`, `policy:violated`, `provider:added`, `provider:removed`, `model:added`, and `model:removed` event produces a typed `AuditEntry` (full list in `AuditAction`). Rule attribution flows through as a `ruleId` field on `request:sent` / `request:blocked` entries rather than its own event. Plug any sink via `AuditSink`. |
 | Config validator | `validateConfig()` runs on startup — rejects malformed budgets, invalid scope types, non-hex master keys, etc. before the router accepts any request. |
 | Configuration Manager auth | Local Tkinter app uses PBKDF2-HMAC-SHA256 (200 000 iterations, per-install salt) on a random 32-byte key. Comparison is constant-time (`hmac.compare_digest`). |
 | BYOK keystore file mode | Config Manager writes `~/.freerouter-admin/byok-keys.json` with mode `0600` — same trust boundary as the admin-key hash. Kept out of `.env` and `freerouter.config.json`. |

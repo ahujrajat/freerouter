@@ -383,3 +383,55 @@ describe('Cost optimization — router integration', () => {
     expect(summary.spendUsd).toBeLessThan(0.0001)
   })
 })
+
+// ── Budget policy lifecycle ────────────────────────────────────────────────
+
+describe("Budget policy lifecycle", () => {
+  it("addBudgetPolicy + removeBudgetPolicy round-trip", () => {
+    const router = new FreeRouter({ masterKey })
+    expect(router.listBudgetPolicies()).toHaveLength(0)
+
+    router.addBudgetPolicy({
+      id: "temp-cap",
+      scope: { type: "user", userId: "u1" },
+      window: "hourly",
+      maxSpendUsd: 0.01,
+      onLimitReached: "block",
+    })
+    expect(router.listBudgetPolicies()).toHaveLength(1)
+    expect(router.listBudgetPolicies()[0]?.id).toBe("temp-cap")
+
+    expect(router.removeBudgetPolicy("temp-cap")).toBe(true)
+    expect(router.listBudgetPolicies()).toHaveLength(0)
+  })
+
+  it("removeBudgetPolicy returns false for unknown id", () => {
+    const router = new FreeRouter({ masterKey })
+    expect(router.removeBudgetPolicy("does-not-exist")).toBe(false)
+  })
+
+  it("removing a runtime-added policy prevents it from blocking subsequent requests", async () => {
+    // inputRate=100 (USD/1M) so the rounded pre-flight estimate is > 0 and trips the zero cap.
+    const provider = new MockProvider("p", 100)
+    const router = new FreeRouter({ masterKey })
+    router.registerProvider(provider)
+    router.setKey("u1", "p", "k")
+
+    router.addBudgetPolicy({
+      id: "tight",
+      priority: 100,
+      scope: { type: "user", userId: "u1" },
+      window: "hourly",
+      maxSpendUsd: 0,           // any pre-flight estimate > 0 trips this
+      onLimitReached: "block",
+    })
+    await expect(
+      router.chat("u1", { model: "p/m", messages: [{ role: "user", content: "x" }] })
+    ).rejects.toThrow(/blocked/i)
+
+    expect(router.removeBudgetPolicy("tight")).toBe(true)
+    const ok = await router.chat("u1", { model: "p/m", messages: [{ role: "user", content: "x" }] })
+    expect(ok.content).toBe("ok")
+  })
+})
+

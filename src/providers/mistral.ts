@@ -32,7 +32,12 @@ export class MistralProvider extends BaseProvider {
   readonly name = 'mistral'
 
   pricing(model: string): ProviderPricing {
-    const key = Object.keys(PRICING).find(k => model.startsWith(k))
+    // Exact match, then longest-prefix.
+    const exact = PRICING[model]
+    if (exact !== undefined) return exact
+    const key = Object.keys(PRICING)
+      .filter(k => model.startsWith(k))
+      .sort((a, b) => b.length - a.length)[0]
     return key !== undefined ? (PRICING[key] ?? DEFAULT_PRICING) : DEFAULT_PRICING
   }
 

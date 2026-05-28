@@ -83,6 +83,30 @@ export type {
 export { ShadowRouter, MemoryShadowSink } from './finops/shadow-router.js'
 export type { ShadowSink, ShadowDecisionRecord } from './finops/shadow-router.js'
 
+// Optimization pipeline (per-request GEPA, complexity gate, ledger, cache, bridge)
+export {
+  extractFeatures, score, DEFAULT_WEIGHTS, DEFAULT_SATURATION,
+} from './optimization/complexity-heuristics.js'
+export type {
+  ComplexityFeatures, HeuristicWeights, ComplexityScore, SaturationConstants,
+} from './optimization/complexity-heuristics.js'
+export { RequestClassifier } from './optimization/classifier.js'
+export type { ClassifierStrategy, ClassifierConfig, RequestClass } from './optimization/classifier.js'
+export { PromptCache } from './optimization/prompt-cache.js'
+export type {
+  CacheScope, CacheKeyInput, OptimizedTemplate, PromptCacheConfig,
+} from './optimization/prompt-cache.js'
+export { GepaBridge } from './optimization/gepa-bridge.js'
+export type {
+  GepaBridgeConfig, BridgeStatus, BridgeResult, OptimizeRequest, OptimizeResponse,
+} from './optimization/gepa-bridge.js'
+export { OptimizationLedger } from './optimization/ledger.js'
+export type { LedgerEntry, LedgerScopeKey } from './optimization/ledger.js'
+export { ComplexityGate } from './optimization/complexity-gate.js'
+export type { GateAction, GateDecision, ComplexityGateConfig } from './optimization/complexity-gate.js'
+export { OptimizationPipeline } from './optimization/pipeline.js'
+export type { PipelineOutcome } from './optimization/pipeline.js'
+
 // FinOps — pricing sources
 export type {
   PricingSource, PricingManifest, PricingTransform, HttpPricingSourceOptions,

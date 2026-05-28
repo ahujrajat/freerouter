@@ -794,6 +794,23 @@ export class FreeRouter {
 
   addBudgetPolicy(policy: BudgetPolicy): void { this.policies.push(policy) }
 
+  /**
+   * Remove a runtime-added budget policy by id. Returns true if a policy
+   * was removed. Useful in tests and ephemeral demos where a tight cap is
+   * added for one scenario and must not leak into the next.
+   */
+  removeBudgetPolicy(id: string): boolean {
+    const idx = this.policies.findIndex(p => p.id === id)
+    if (idx < 0) return false
+    this.policies.splice(idx, 1)
+    return true
+  }
+
+  /** Snapshot of the current budget policy list (priority-ordered as configured). */
+  listBudgetPolicies(): readonly BudgetPolicy[] {
+    return this.policies
+  }
+
   getSpend(scope: BudgetScope, window: BudgetWindow): SpendSummary {
     return this.tracker.getSpend(scope, window)
   }

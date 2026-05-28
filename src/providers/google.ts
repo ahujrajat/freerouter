@@ -36,8 +36,15 @@ export class GoogleProvider extends BaseProvider {
   readonly name = 'google'
 
   pricing(model: string): ProviderPricing {
-    // Match on the base model name, ignoring suffixes like "-preview"
-    const key = Object.keys(PRICING).find(k => model.startsWith(k))
+    // Exact match first; otherwise longest-prefix match. Without longest-prefix
+    // ordering, "gemini-2.0-flash-lite" would mis-match the shorter
+    // "gemini-2.0-flash" key (alphabetical insertion order) and inherit the
+    // parent model's (more expensive) pricing, breaking cost-router decisions.
+    const exact = PRICING[model]
+    if (exact !== undefined) return exact
+    const key = Object.keys(PRICING)
+      .filter(k => model.startsWith(k))
+      .sort((a, b) => b.length - a.length)[0]
     return key !== undefined ? (PRICING[key] ?? DEFAULT_PRICING) : DEFAULT_PRICING
   }
 

@@ -56,8 +56,9 @@ async function parseJson(raw: string): Promise<FileConfig> {
 async function parseYaml(raw: string): Promise<FileConfig> {
   try {
     // Dynamic import — only loaded if user installs `yaml` peer dep
-    const { parse } = await import('yaml')
-    return parse(raw) as FileConfig
+    // @ts-expect-error optional peer dependency, intentionally not bundled types
+    const mod = await import('yaml')
+    return (mod.parse as (s: string) => unknown)(raw) as FileConfig
   } catch {
     throw new Error(
       '[FreeRouter/ConfigLoader] YAML config requires the "yaml" package. Install it: npm i yaml',
