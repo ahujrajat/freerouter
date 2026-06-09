@@ -34,8 +34,8 @@ export function hammingDistance(a: string, b: string): number {
   let x = BigInt(`0x${a}`) ^ BigInt(`0x${b}`)
   let count = 0
   while (x > 0n) {
-    count += Number(x & 1n)
-    x >>= 1n
+    x &= x - 1n
+    count++
   }
   return count
 }

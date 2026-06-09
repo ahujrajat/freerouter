@@ -51,6 +51,7 @@ export class RequestClassifier {
     return { signature: `rb:${label}`, label }
   }
 
+  // Delegates to simhash64: stable across case/whitespace, no embedding model required.
   private classifyByHash(req: ChatRequest): RequestClass {
     const text = req.messages.map(m => m.content).join(' ')
     const hash = simhash64(text)
