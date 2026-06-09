@@ -84,7 +84,7 @@ describe('FingerprintStore', () => {
   })
 })
 
-import { writeFileSync as wf, mkdirSync as mkd } from 'node:fs'
+import { writeFileSync as wf, mkdirSync as mkd, utimesSync } from 'node:fs'
 import { OptimizedStore, type OptimizedEntry } from '../src/optimization/optimized-store.js'
 import type { ChatRequest } from '../src/types.js'
 
@@ -138,12 +138,17 @@ describe('OptimizedStore / FingerprintMatcher', () => {
   it('retries a malformed store file after it becomes valid (mtime not cached on parse error)', () => {
     const path = join(dir, 'optimized-prompts.json')
     mkd(dir, { recursive: true })
+    const fixedTime = new Date('2020-01-01T00:00:00Z')
     wf(path, '{ this is not json', 'utf-8')
+    utimesSync(path, fixedTime, fixedTime)
     const store = new OptimizedStore({ optimizedStorePath: path, matchHammingDistance: 3 })
     store.load()
     const text = 'summarize the quarterly earnings report for acme corp'
     const sh = simhash64(text)
     wf(path, JSON.stringify([{ fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'TPL', qualityScore: 0.9, predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1 }]), 'utf-8')
+    // Pin the valid file to the SAME mtime as the malformed one, so a buggy
+    // implementation that cached mtime before parsing would skip this reload.
+    utimesSync(path, fixedTime, fixedTime)
     store.reloadIfChanged()
     expect(store.match({ model: 'gpt-4o', messages: [{ role: 'user', content: text }] })?.template).toBe('TPL')
   })
