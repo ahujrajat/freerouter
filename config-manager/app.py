@@ -11,6 +11,7 @@ The app never opens a network port; every operation is a local file write.
 from __future__ import annotations
 
 import datetime
+import time
 import tkinter as tk
 from copy import deepcopy
 from tkinter import messagebox, simpledialog, ttk
@@ -1219,7 +1220,7 @@ class AdminApp:
             ("Candidates file (candidates.json)", self.ao_candidates_path_var),
             ("Optimized store (optimized-prompts.json)", self.ao_optimized_path_var),
             ("Target (cheap) model", self.ao_target_var),
-            ("Fallback (capable) model", self.ao_fallback_var),
+            ("Fallback override (optional; defaults to candidate's model)", self.ao_fallback_var),
         ]):
             _grid_label(paths, label, r)
             _grid_entry(paths, var, r)
@@ -1264,7 +1265,6 @@ class AdminApp:
             self.ao_status_var.set("Set the Sidecar URL (Prompt optimization section) first.")
             return
         target = self.ao_target_var.get().strip() or self.po_target_var.get().strip()
-        fallback = self.ao_fallback_var.get().strip() or self.po_fallback_var.get().strip()
         cand_path = self.ao_candidates_path_var.get().strip()
         opt_path = self.ao_optimized_path_var.get().strip()
         rows_by_fp = {r.get("fingerprint"): r for r in getattr(self, "_candidate_rows", [])}
@@ -1274,6 +1274,9 @@ class AdminApp:
             row = rows_by_fp.get(fp)
             if row is None:
                 continue
+            fallback = (self.ao_fallback_var.get().strip()
+                        or row.get("model", "")
+                        or self.po_fallback_var.get().strip())
             candidates_io.update_status(cand_path, fp, "optimizing")
             try:
                 result = candidates_io.optimize_candidate(
@@ -1290,7 +1293,7 @@ class AdminApp:
                     "qualityScore": result.get("qualityScore", 0.0),
                     "predictedSavingsUsd": result.get("predictedSavingsUsd", 0.0),
                     "targetModel": target,
-                    "optimizedAt": int(__import__("time").time() * 1000),
+                    "optimizedAt": int(time.time() * 1000),
                 })
                 candidates_io.update_status(cand_path, fp, "optimized")
                 done += 1
@@ -1974,7 +1977,6 @@ class AdminApp:
         self.ao_candidates_path_var.set(str(ao.get("candidatesPath", "") or ""))
         self.ao_optimized_path_var.set(str(ao.get("optimizedStorePath", "") or ""))
         self.ao_target_var.set(str(ao.get("targetModel", "") or ""))
-        self.ao_fallback_var.set(str(ao.get("fallbackModel", "") or ""))
 
     def _gather_optimization_into_config(self, cfg: dict[str, Any]) -> None:
         # Telemetry export
@@ -2062,7 +2064,7 @@ class AdminApp:
                 "enabled": True,
                 "candidatesPath": ao_candidates,
                 "optimizedStorePath": self.ao_optimized_path_var.get().strip(),
-                "referencesDir": (cfg.get("autoOptimization") or {}).get("referencesDir", "./gepa-references"),
+                "referencesDir": (self.config.get("autoOptimization") or {}).get("referencesDir", "./gepa-references"),
                 "targetModel": self.ao_target_var.get().strip(),
             }
         else:
