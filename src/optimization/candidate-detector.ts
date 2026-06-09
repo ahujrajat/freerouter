@@ -36,6 +36,11 @@ export class CandidateDetector {
 
   constructor(private readonly cfg: CandidateDetectorConfig) {}
 
+  /** Record/update a model's input rate observed at runtime (USD / 1M tokens). */
+  setModelRate(model: string, inputPer1M: number): void {
+    this.cfg.modelInputRates[model] = inputPer1M
+  }
+
   observe(obs: Observation): void {
     const { record, fingerprint, simhash } = obs
     const existing = this.aggs.get(fingerprint)

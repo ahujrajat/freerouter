@@ -58,6 +58,18 @@ export class FingerprintStore {
     return [...this.index.values()]
   }
 
+  /** Merge freshly-computed candidates into the index and persist.
+   *  Preserves a prior non-'observed' status (optimizing/optimized/rejected). */
+  refreshCandidates(fresh: CandidateEntry[]): void {
+    for (const c of fresh) {
+      const prior = this.index.get(c.fingerprint)
+      this.index.set(c.fingerprint, prior !== undefined && prior.status !== 'observed'
+        ? { ...c, status: prior.status }
+        : c)
+    }
+    this.persist()
+  }
+
   persist(): void {
     const path = this.cfg.candidatesPath
     mkdirSync(dirname(path), { recursive: true })

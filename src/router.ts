@@ -36,6 +36,10 @@ import { calculateCost, estimatePromptTokens } from './finops/cost-calculator.js
 import { TelemetryExporter } from './finops/telemetry-exporter.js'
 import { ShadowRouter } from './finops/shadow-router.js'
 import { OptimizationPipeline } from './optimization/pipeline.js'
+import { OptimizedStore } from './optimization/optimized-store.js'
+import { FingerprintStore } from './optimization/fingerprint-store.js'
+import { CandidateDetector } from './optimization/candidate-detector.js'
+import { simhash64 } from './optimization/simhash.js'
 import { loadConfigFile, loadConfigFromEnv, mergeConfigs, validateConfigKeys } from './config-loader.js'
 import { TypedEventEmitter } from './router-events.js'
 import { MetricsCollector } from './metrics-collector.js'
@@ -56,6 +60,9 @@ export class FreeRouter {
   private readonly telemetryExporter: TelemetryExporter | undefined
   private readonly shadowRouter: ShadowRouter | undefined
   private readonly optimizationPipeline: OptimizationPipeline | undefined
+  private readonly optimizedStore: OptimizedStore | undefined
+  private readonly fingerprintStore: FingerprintStore | undefined
+  private readonly candidateDetector: CandidateDetector | undefined
   private readonly config: RouterConfig
   private readonly policies: BudgetPolicy[]
 
@@ -200,6 +207,33 @@ export class FreeRouter {
     this.optimizationPipeline = config.promptOptimization?.enabled === true
       ? new OptimizationPipeline(config.promptOptimization)
       : undefined
+
+    if (config.autoOptimization?.enabled === true) {
+      const ao = config.autoOptimization
+      this.optimizedStore = new OptimizedStore({
+        optimizedStorePath: ao.optimizedStorePath,
+        ...(ao.matchHammingDistance !== undefined && { matchHammingDistance: ao.matchHammingDistance }),
+      })
+      this.optimizedStore.load()
+      this.fingerprintStore = new FingerprintStore({
+        candidatesPath: ao.candidatesPath,
+        referencesDir: ao.referencesDir,
+        captureReferences: ao.captureReferences ?? false,
+        ...(ao.maxReferencesPerFingerprint !== undefined && { maxReferencesPerFingerprint: ao.maxReferencesPerFingerprint }),
+      })
+      this.fingerprintStore.load()
+      this.candidateDetector = new CandidateDetector({
+        targetInputPer1M: ao.targetInputPer1M ?? 0.5,
+        costlyModelInputPer1M: ao.costlyModelInputPer1M ?? 2,
+        minObservations: ao.minObservations ?? 20,
+        optimizationCostUsdEstimate: ao.optimizationCostUsdEstimate ?? 0.5,
+        modelInputRates: {},
+      })
+    } else {
+      this.optimizedStore = undefined
+      this.fingerprintStore = undefined
+      this.candidateDetector = undefined
+    }
 
     // Seed known providers from the initial registry
     for (const name of this.registry.list()) {
@@ -551,6 +585,21 @@ export class FreeRouter {
 
   // ── Chat (non-streaming) ──────────────────────────────────────────
 
+  private injectSystem(messages: ChatRequest['messages'], systemPrompt: string): ChatRequest['messages'] {
+    const out: ChatRequest['messages'] = []
+    let injected = false
+    for (const m of messages) {
+      if (!injected && m.role === 'system') {
+        out.push({ role: 'system', content: `${systemPrompt}\n\n${m.content}` })
+        injected = true
+      } else {
+        out.push(m)
+      }
+    }
+    if (!injected) out.unshift({ role: 'system', content: systemPrompt })
+    return out
+  }
+
   async chat(userId: string, req: ChatRequest, context: RequestContext = {}): Promise<ChatResponse> {
     this.validator.validate(req)
 
@@ -583,6 +632,19 @@ export class FreeRouter {
     } else {
       const optimizedModel = this.applyRuleAndCost(req, ruleDecision)
       effectiveReq = optimizedModel !== req.model ? { ...req, model: optimizedModel } : req
+    }
+
+    // Auto-optimization injection (only when the flag-based pipeline didn't already inject).
+    if (this.optimizedStore !== undefined && pipelineOutcome?.systemPrompt === undefined) {
+      this.optimizedStore.reloadIfChanged()
+      const matched = this.optimizedStore.match(req)
+      if (matched !== undefined) {
+        effectiveReq = {
+          ...effectiveReq,
+          model: matched.targetModel,
+          messages: this.injectSystem(effectiveReq.messages, matched.template),
+        }
+      }
     }
 
     const decision = this.policyEngine.evaluate(userId, effectiveReq, context)
@@ -636,6 +698,18 @@ export class FreeRouter {
     this.metricsCollector.recordRequest(providerKey, response.latencyMs, record.costUsd, 'success')
     this.tracker.recordSpend(record)
     this.telemetryExporter?.capture(record)
+    if (this.candidateDetector !== undefined && this.fingerprintStore !== undefined) {
+      try {
+        const fpModel = modelName.replace(/[^\w-]/g, '_')
+        const simhash = simhash64(req.messages.map(m => m.content).join(' '))
+        const fingerprint = `eh:${fpModel}:${simhash}`
+        const inputRate = this.registry.getModelPricing(provider.name, modelName)?.input ?? 0
+        if (inputRate > 0) this.candidateDetector.setModelRate(modelName, inputRate)
+        this.candidateDetector.observe({ record, fingerprint, simhash })
+        this.fingerprintStore.captureReference(fingerprint, req.messages, response.content)
+        this.fingerprintStore.refreshCandidates(this.candidateDetector.computeCandidates())
+      } catch { /* best-effort: never affect the request */ }
+    }
     this.runShadow(userId, req, context, modelName, record)
 
     if (this.optimizationPipeline !== undefined && pipelineOutcome !== undefined &&

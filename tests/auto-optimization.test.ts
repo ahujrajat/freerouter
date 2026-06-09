@@ -217,3 +217,70 @@ describe('CandidateDetector', () => {
     expect(c[0]!.estPredictedSavingsUsd).toBeGreaterThanOrEqual(c[1]!.estPredictedSavingsUsd)
   })
 })
+
+import { FreeRouter } from '../src/router.js'
+import type { BaseProvider } from '../src/providers/base-provider.js'
+
+class FakeProvider {
+  name = 'openai'
+  async chat(req: ChatRequest): Promise<any> {
+    return {
+      id: 'x', model: req.model, content: `system=${req.messages.find(m => m.role === 'system')?.content ?? 'none'}`,
+      usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+      latencyMs: 1, provider: 'openai', finishedAt: Date.now(),
+    }
+  }
+  async *chatStream(): AsyncGenerator<any> { /* unused */ }
+  pricing(_model: string) { return { input: 2.5, output: 10 } }
+}
+
+describe('FreeRouter auto-optimization injection', () => {
+  let dir: string
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'fr-router-')) })
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+
+  it('injects an optimized template for a matching prompt and routes to target', async () => {
+    const text = 'summarize the quarterly earnings report for acme corp in detail'
+    const sh = simhash64(text)
+    const storePath = join(dir, 'optimized-prompts.json')
+    wf(storePath, JSON.stringify([{
+      fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'OPTIMIZED', qualityScore: 0.9,
+      predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1,
+    }]), 'utf-8')
+
+    const router = new FreeRouter({
+      autoOptimization: {
+        enabled: true, candidatesPath: join(dir, 'candidates.json'),
+        optimizedStorePath: storePath, referencesDir: join(dir, 'refs'),
+        targetModel: 'gpt-4o-mini', captureReferences: false,
+      },
+    })
+    router.registerProvider(new FakeProvider() as unknown as BaseProvider)
+    router.setKey('user1', 'openai', 'sk-test')
+
+    const resp = await router.chat('user1', { model: 'gpt-4o', messages: [{ role: 'user', content: text }] })
+    expect(resp.model).toBe('gpt-4o-mini')
+    expect(resp.content).toContain('OPTIMIZED')
+  })
+
+  it('does not inject for a dissimilar prompt', async () => {
+    const sh = simhash64('summarize the quarterly earnings report for acme corp in detail')
+    const storePath = join(dir, 'optimized-prompts.json')
+    wf(storePath, JSON.stringify([{
+      fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'OPTIMIZED', qualityScore: 0.9,
+      predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1,
+    }]), 'utf-8')
+    const router = new FreeRouter({
+      autoOptimization: {
+        enabled: true, candidatesPath: join(dir, 'candidates.json'),
+        optimizedStorePath: storePath, referencesDir: join(dir, 'refs'),
+        targetModel: 'gpt-4o-mini', captureReferences: false,
+      },
+    })
+    router.registerProvider(new FakeProvider() as unknown as BaseProvider)
+    router.setKey('user1', 'openai', 'sk-test')
+    const resp = await router.chat('user1', { model: 'gpt-4o', messages: [{ role: 'user', content: 'write a haiku about the ocean tonight' }] })
+    expect(resp.model).toBe('gpt-4o')
+    expect(resp.content).toContain('none')
+  })
+})
