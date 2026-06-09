@@ -84,6 +84,58 @@ describe('FingerprintStore', () => {
   })
 })
 
+import { writeFileSync as wf, mkdirSync as mkd } from 'node:fs'
+import { OptimizedStore, type OptimizedEntry } from '../src/optimization/optimized-store.js'
+import type { ChatRequest } from '../src/types.js'
+
+describe('OptimizedStore / FingerprintMatcher', () => {
+  let dir: string
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'fr-opt-')) })
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+
+  const writeStore = (entries: OptimizedEntry[]): string => {
+    const path = join(dir, 'optimized-prompts.json')
+    mkd(dir, { recursive: true })
+    wf(path, JSON.stringify(entries), 'utf-8')
+    return path
+  }
+
+  const req = (content: string): ChatRequest => ({ model: 'gpt-4o', messages: [{ role: 'user', content }] })
+
+  it('matches an exact-fingerprint request and returns the template', () => {
+    const text = 'summarize the quarterly earnings report for acme corp'
+    const sh = simhash64(text)
+    const path = writeStore([{ fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'TPL', qualityScore: 0.9, predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1 }])
+    const store = new OptimizedStore({ optimizedStorePath: path, matchHammingDistance: 3 })
+    store.load()
+    const m = store.match(req(text))
+    expect(m?.template).toBe('TPL')
+    expect(m?.targetModel).toBe('gpt-4o-mini')
+  })
+
+  it('matches a near-duplicate within the Hamming threshold', () => {
+    const sh = simhash64('summarize the quarterly earnings report for acme corp')
+    const path = writeStore([{ fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'TPL', qualityScore: 0.9, predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1 }])
+    const store = new OptimizedStore({ optimizedStorePath: path, matchHammingDistance: 12 })
+    store.load()
+    expect(store.match(req('summarize the quarterly earnings report for acme corporation'))?.template).toBe('TPL')
+  })
+
+  it('does not match a dissimilar request', () => {
+    const sh = simhash64('summarize the quarterly earnings report for acme corp')
+    const path = writeStore([{ fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'TPL', qualityScore: 0.9, predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1 }])
+    const store = new OptimizedStore({ optimizedStorePath: path, matchHammingDistance: 3 })
+    store.load()
+    expect(store.match(req('write a haiku about the ocean and the moon tonight'))).toBeUndefined()
+  })
+
+  it('returns undefined when the store file is missing or malformed', () => {
+    const store = new OptimizedStore({ optimizedStorePath: join(dir, 'nope.json'), matchHammingDistance: 3 })
+    store.load()
+    expect(store.match(req('anything at all'))).toBeUndefined()
+  })
+})
+
 import { CandidateDetector } from '../src/optimization/candidate-detector.js'
 import type { SpendRecord } from '../src/types.js'
 
