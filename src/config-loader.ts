@@ -152,7 +152,7 @@ const KNOWN_KEYS = new Set<string>([
   'providers', 'audit', 'pricingOverrides',
   // GEPA optimization pipeline — file-loadable subsets. Runtime callbacks
   // (sink instances, etc.) are wired programmatically over these fields.
-  'telemetryExport', 'shadowRouter', 'promptOptimization',
+  'telemetryExport', 'shadowRouter', 'promptOptimization', 'autoOptimization',
 ])
 
 /**

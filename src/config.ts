@@ -98,6 +98,41 @@ export interface PromptOptimizationConfig {
   failClosed?: boolean
 }
 
+/**
+ * Proactive auto-optimization. Independent of `promptOptimization`.
+ *
+ * When enabled, the router passively fingerprints prompts that frequently run
+ * on costly models, writes ROI-ranked candidates to `candidatesPath`, and — once
+ * the config-manager GUI has optimized a candidate (writing `optimizedStorePath`)
+ * — injects the optimized template for same/similar prompts and routes them to
+ * `targetModel`.
+ */
+export interface AutoOptimizationConfig {
+  enabled: boolean
+  /** Where ROI-ranked candidates are written (read by the config-manager GUI). */
+  candidatesPath: string
+  /** Where the GUI writes optimized templates (read/watched by the router). */
+  optimizedStorePath: string
+  /** Reference capture dir; shared with the GEPA sidecar. */
+  referencesDir: string
+  /** Cheap model that matched requests are routed to. */
+  targetModel: string
+  /** Opt-in to storing {messages, output} samples as references. Default false. */
+  captureReferences?: boolean
+  /** Cap on stored references per fingerprint. Default 10. */
+  maxReferencesPerFingerprint?: number
+  /** Model input rate (USD/1M) at/above which a model is "costly". Default 2. */
+  costlyModelInputPer1M?: number
+  /** Per-1M input price of the cheap target. Default 0.5. */
+  targetInputPer1M?: number
+  /** Max Hamming distance for a similar match. Default 3. */
+  matchHammingDistance?: number
+  /** Min observations before a fingerprint qualifies. Default 20. */
+  minObservations?: number
+  /** Flat estimate of one optimization run's USD cost, for break-even. Default 0.5. */
+  optimizationCostUsdEstimate?: number
+}
+
 export interface ShadowRouterConfig {
   /** Candidate config the shadow evaluates in parallel with live routing. */
   candidate: ReplayCandidateConfig
@@ -238,6 +273,9 @@ export interface RouterConfig {
    * for requests that pass the complexity gate). Off unless `enabled: true`.
    */
   promptOptimization?: PromptOptimizationConfig
+
+  /** Proactive auto-optimization (candidate detection + optimized-prompt injection). */
+  autoOptimization?: AutoOptimizationConfig
 
   /**
    * Automatically select a cheaper candidate model for eligible requests.

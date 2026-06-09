@@ -154,6 +154,14 @@ describe('OptimizedStore / FingerprintMatcher', () => {
   })
 })
 
+import { validateConfigKeys } from '../src/config-loader.js'
+
+describe('autoOptimization config', () => {
+  it('is an accepted top-level config key', () => {
+    expect(validateConfigKeys({ autoOptimization: { enabled: true } })).toEqual([])
+  })
+})
+
 import { CandidateDetector } from '../src/optimization/candidate-detector.js'
 import type { SpendRecord } from '../src/types.js'
 
