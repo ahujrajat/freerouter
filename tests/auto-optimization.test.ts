@@ -284,3 +284,14 @@ describe('FreeRouter auto-optimization injection', () => {
     expect(resp.content).toContain('none')
   })
 })
+
+import * as FR from '../src/index.js'
+
+describe('public exports', () => {
+  it('exports the new auto-optimization building blocks', () => {
+    expect(typeof FR.CandidateDetector).toBe('function')
+    expect(typeof FR.FingerprintStore).toBe('function')
+    expect(typeof FR.OptimizedStore).toBe('function')
+    expect(typeof FR.simhash64).toBe('function')
+  })
+})

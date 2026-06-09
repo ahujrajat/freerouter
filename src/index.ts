@@ -107,6 +107,16 @@ export type { GateAction, GateDecision, ComplexityGateConfig } from './optimizat
 export { OptimizationPipeline } from './optimization/pipeline.js'
 export type { PipelineOutcome } from './optimization/pipeline.js'
 
+// Optimization — auto-optimization candidates
+export { simhash64, hammingDistance } from './optimization/simhash.js'
+export { CandidateDetector } from './optimization/candidate-detector.js'
+export type { CandidateDetectorConfig, Observation } from './optimization/candidate-detector.js'
+export { FingerprintStore } from './optimization/fingerprint-store.js'
+export type { CandidateEntry, CandidateStatus, FingerprintStoreConfig } from './optimization/fingerprint-store.js'
+export { OptimizedStore } from './optimization/optimized-store.js'
+export type { OptimizedEntry, OptimizedStoreConfig } from './optimization/optimized-store.js'
+export type { AutoOptimizationConfig } from './config.js'
+
 // FinOps — pricing sources
 export type {
   PricingSource, PricingManifest, PricingTransform, HttpPricingSourceOptions,
