@@ -219,6 +219,7 @@ export class FreeRouter {
         candidatesPath: ao.candidatesPath,
         referencesDir: ao.referencesDir,
         captureReferences: ao.captureReferences ?? false,
+        persistIntervalMs: 5000,
         ...(ao.maxReferencesPerFingerprint !== undefined && { maxReferencesPerFingerprint: ao.maxReferencesPerFingerprint }),
       })
       this.fingerprintStore.load()

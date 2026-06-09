@@ -2060,11 +2060,13 @@ class AdminApp:
         # Auto-optimization candidates
         ao_candidates = self.ao_candidates_path_var.get().strip()
         if ao_candidates:
+            prev_ao = (self.config.get("autoOptimization") or {})
             cfg["autoOptimization"] = {
+                **prev_ao,
                 "enabled": True,
                 "candidatesPath": ao_candidates,
                 "optimizedStorePath": self.ao_optimized_path_var.get().strip(),
-                "referencesDir": (self.config.get("autoOptimization") or {}).get("referencesDir", "./gepa-references"),
+                "referencesDir": prev_ao.get("referencesDir", "./gepa-references"),
                 "targetModel": self.ao_target_var.get().strip(),
             }
         else:

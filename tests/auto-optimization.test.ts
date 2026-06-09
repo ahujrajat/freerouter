@@ -34,10 +34,15 @@ describe('hammingDistance', () => {
   })
 })
 
-import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync, statSync, utimesSync as _utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { FingerprintStore, type CandidateEntry } from '../src/optimization/fingerprint-store.js'
+
+function statSyncTouchFuture(p: string): void {
+  const future = new Date(Date.now() + 60_000)
+  _utimesSync(p, future, future)
+}
 
 describe('FingerprintStore', () => {
   let dir: string
@@ -81,6 +86,42 @@ describe('FingerprintStore', () => {
     })
     store.captureReference('eh:gpt-4o:abc', [{ role: 'user', content: 'q' }], 'a')
     expect(existsSync(refsDir) && readdirSync(refsDir).length > 0).toBe(false)
+  })
+
+  it('adopts an externally-written non-observed status before persisting (no clobber)', () => {
+    const path = join(dir, 'candidates.json')
+    const refsDir = join(dir, 'refs')
+    const mk = (status: string): CandidateEntry => ({
+      fingerprint: 'eh:gpt-4o:abc', simhash: '00000000000000ab', model: 'gpt-4o',
+      count: 5, totalCostUsd: 0.2, lastSeen: 1, estPredictedSavingsUsd: 0.05,
+      estBreakEvenReqs: 4, sampleClassSignature: 'eh:gpt-4o:abc', status: status as CandidateEntry['status'],
+    })
+    // Router observes the fingerprint and persists it as 'observed'.
+    const store = new FingerprintStore({ candidatesPath: path, referencesDir: refsDir, captureReferences: false })
+    store.refreshCandidates([mk('observed')])
+    // GUI marks it optimized on disk (out of band).
+    const onDisk = JSON.parse(readFileSync(path, 'utf-8')) as CandidateEntry[]
+    onDisk[0]!.status = 'optimized'
+    // ensure mtime differs so the change is detected
+    wf(path, JSON.stringify(onDisk), 'utf-8')
+    statSyncTouchFuture(path)
+    // Next router refresh must NOT clobber 'optimized' back to 'observed'.
+    store.refreshCandidates([mk('observed')])
+    const after = JSON.parse(readFileSync(path, 'utf-8')) as CandidateEntry[]
+    expect(after[0]!.status).toBe('optimized')
+  })
+
+  it('throttles persistence when persistIntervalMs is set', () => {
+    const path = join(dir, 'candidates.json')
+    const base = (fp: string): CandidateEntry => ({
+      fingerprint: fp, simhash: '0000000000000001', model: 'gpt-4o', count: 3, totalCostUsd: 0.1,
+      lastSeen: 1, estPredictedSavingsUsd: 0.02, estBreakEvenReqs: 9, sampleClassSignature: fp, status: 'observed',
+    })
+    const store = new FingerprintStore({ candidatesPath: path, referencesDir: join(dir, 'refs'), captureReferences: false, persistIntervalMs: 100000 })
+    store.refreshCandidates([base('fp1')])           // first call persists immediately
+    store.refreshCandidates([base('fp1'), base('fp2')]) // within window → should NOT rewrite
+    const after = JSON.parse(readFileSync(path, 'utf-8')) as CandidateEntry[]
+    expect(after.map(e => e.fingerprint).sort()).toEqual(['fp1'])
   })
 })
 
