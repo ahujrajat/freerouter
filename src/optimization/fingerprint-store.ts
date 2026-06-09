@@ -27,6 +27,9 @@ export interface FingerprintStoreConfig {
 /** Persists the lightweight candidate index and captures capped references. */
 export class FingerprintStore {
   private readonly index = new Map<string, CandidateEntry>()
+  // In-memory only: resets on process restart, so the per-fingerprint cap is
+  // best-effort across restarts. Intentional — references are optimizer training
+  // data, not hard-bounded; counting on-disk lines per call isn't worth the I/O.
   private readonly refCounts = new Map<string, number>()
   private readonly maxRefs: number
 
@@ -34,6 +37,7 @@ export class FingerprintStore {
     this.maxRefs = cfg.maxReferencesPerFingerprint ?? 10
   }
 
+  /** Read the candidate index from disk. Call before get()/all(). No-op if the file is absent. */
   load(): void {
     if (!existsSync(this.cfg.candidatesPath)) return
     try {
