@@ -134,6 +134,19 @@ describe('OptimizedStore / FingerprintMatcher', () => {
     store.load()
     expect(store.match(req('anything at all'))).toBeUndefined()
   })
+
+  it('retries a malformed store file after it becomes valid (mtime not cached on parse error)', () => {
+    const path = join(dir, 'optimized-prompts.json')
+    mkd(dir, { recursive: true })
+    wf(path, '{ this is not json', 'utf-8')
+    const store = new OptimizedStore({ optimizedStorePath: path, matchHammingDistance: 3 })
+    store.load()
+    const text = 'summarize the quarterly earnings report for acme corp'
+    const sh = simhash64(text)
+    wf(path, JSON.stringify([{ fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'TPL', qualityScore: 0.9, predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1 }]), 'utf-8')
+    store.reloadIfChanged()
+    expect(store.match({ model: 'gpt-4o', messages: [{ role: 'user', content: text }] })?.template).toBe('TPL')
+  })
 })
 
 import { CandidateDetector } from '../src/optimization/candidate-detector.js'

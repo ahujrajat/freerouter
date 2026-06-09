@@ -32,8 +32,9 @@ export class OptimizedStore {
     const path = this.cfg.optimizedStorePath
     if (!existsSync(path)) { this.entries = []; return }
     try {
-      this.mtimeMs = statSync(path).mtimeMs
+      const mtime = statSync(path).mtimeMs
       this.entries = JSON.parse(readFileSync(path, 'utf-8')) as OptimizedEntry[]
+      this.mtimeMs = mtime
     } catch {
       this.entries = []
     }
