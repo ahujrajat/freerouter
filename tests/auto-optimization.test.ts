@@ -83,3 +83,59 @@ describe('FingerprintStore', () => {
     expect(existsSync(refsDir) && readdirSync(refsDir).length > 0).toBe(false)
   })
 })
+
+import { CandidateDetector } from '../src/optimization/candidate-detector.js'
+import type { SpendRecord } from '../src/types.js'
+
+describe('CandidateDetector', () => {
+  const cfg = {
+    targetInputPer1M: 0.5,
+    costlyModelInputPer1M: 5,
+    minObservations: 3,
+    optimizationCostUsdEstimate: 0.5,
+    modelInputRates: { 'gpt-4o': 10, 'gpt-4o-mini': 0.5 },
+  }
+
+  const rec = (model: string, fp: string, tokens: number): { record: SpendRecord; simhash: string; fingerprint: string } => ({
+    record: {
+      userId: 'u', provider: 'openai', model,
+      tokens: { promptTokens: tokens, completionTokens: 0, totalTokens: tokens },
+      costUsd: 0.01, timestamp: Date.now(),
+    },
+    simhash: fp.slice(-16).padStart(16, '0'),
+    fingerprint: fp,
+  })
+
+  it('qualifies a frequent costly-model fingerprint and estimates savings', () => {
+    const d = new CandidateDetector(cfg)
+    for (let i = 0; i < 4; i++) d.observe(rec('gpt-4o', 'eh:gpt-4o:00000000000000ab', 100000))
+    const candidates = d.computeCandidates()
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0]!.model).toBe('gpt-4o')
+    expect(candidates[0]!.count).toBe(4)
+    expect(candidates[0]!.estPredictedSavingsUsd).toBeGreaterThan(0)
+    expect(candidates[0]!.status).toBe('observed')
+  })
+
+  it('ignores cheap-model traffic', () => {
+    const d = new CandidateDetector(cfg)
+    for (let i = 0; i < 10; i++) d.observe(rec('gpt-4o-mini', 'eh:gpt-4o-mini:00000000000000cd', 100000))
+    expect(d.computeCandidates()).toHaveLength(0)
+  })
+
+  it('ignores costly fingerprints below minObservations', () => {
+    const d = new CandidateDetector(cfg)
+    d.observe(rec('gpt-4o', 'eh:gpt-4o:00000000000000ab', 100000))
+    d.observe(rec('gpt-4o', 'eh:gpt-4o:00000000000000ab', 100000))
+    expect(d.computeCandidates()).toHaveLength(0)
+  })
+
+  it('ranks candidates by predicted savings descending', () => {
+    const d = new CandidateDetector(cfg)
+    for (let i = 0; i < 3; i++) d.observe(rec('gpt-4o', 'eh:gpt-4o:00000000000000ab', 50000))
+    for (let i = 0; i < 3; i++) d.observe(rec('gpt-4o', 'eh:gpt-4o:00000000000000ef', 200000))
+    const c = d.computeCandidates()
+    expect(c).toHaveLength(2)
+    expect(c[0]!.estPredictedSavingsUsd).toBeGreaterThanOrEqual(c[1]!.estPredictedSavingsUsd)
+  })
+})
