@@ -17,6 +17,7 @@ from tkinter import messagebox, simpledialog, ttk
 from typing import Any, Callable
 
 import byok_io
+import candidates_io
 import config_io
 import prefs
 import pricing_fetcher
@@ -1198,6 +1199,109 @@ class AdminApp:
             _grid_label(po, label, r)
             _grid_entry(po, var, r)
 
+        # ── Auto-optimization candidates ───────────────────────────
+        ac = ttk.LabelFrame(f, text="Auto-optimization candidates", padding=10)
+        ac.grid(row=4, column=0, sticky="ew", pady=(12, 0))
+        ac.columnconfigure(0, weight=1)
+
+        self.ao_candidates_path_var = tk.StringVar()
+        self.ao_optimized_path_var = tk.StringVar()
+        self.ao_target_var = tk.StringVar()
+        self.ao_fallback_var = tk.StringVar()
+        for v in (self.ao_candidates_path_var, self.ao_optimized_path_var,
+                  self.ao_target_var, self.ao_fallback_var):
+            v.trace_add("write", self._mark_dirty)
+
+        paths = ttk.Frame(ac)
+        paths.grid(row=0, column=0, sticky="ew")
+        paths.columnconfigure(1, weight=1)
+        for r, (label, var) in enumerate([
+            ("Candidates file (candidates.json)", self.ao_candidates_path_var),
+            ("Optimized store (optimized-prompts.json)", self.ao_optimized_path_var),
+            ("Target (cheap) model", self.ao_target_var),
+            ("Fallback (capable) model", self.ao_fallback_var),
+        ]):
+            _grid_label(paths, label, r)
+            _grid_entry(paths, var, r)
+
+        self.ao_tree = ttk.Treeview(
+            ac, columns=("model", "count", "savings", "status"), show="headings", height=6,
+        )
+        for col, head, w in [("model", "Model", 160), ("count", "Count", 70),
+                             ("savings", "Est. savings (USD)", 130), ("status", "Status", 100)]:
+            self.ao_tree.heading(col, text=head)
+            self.ao_tree.column(col, width=w, anchor="w")
+        self.ao_tree.grid(row=1, column=0, sticky="ew", pady=(8, 4))
+
+        btns = ttk.Frame(ac)
+        btns.grid(row=2, column=0, sticky="w")
+        ttk.Button(btns, text="Refresh", command=self._reload_candidates).pack(side="left")
+        ttk.Button(btns, text="Optimize Selected", command=self._optimize_selected).pack(side="left", padx=6)
+        self.ao_status_var = tk.StringVar(value="")
+        ttk.Label(ac, textvariable=self.ao_status_var, foreground="#555").grid(row=3, column=0, sticky="w", pady=(4, 0))
+
+    def _reload_candidates(self) -> None:
+        path = self.ao_candidates_path_var.get().strip()
+        if not path:
+            self.ao_status_var.set("Set the candidates file path first.")
+            return
+        self._candidate_rows = candidates_io.load_candidates(path)
+        self.ao_tree.delete(*self.ao_tree.get_children())
+        for r in self._candidate_rows:
+            self.ao_tree.insert("", "end", iid=r.get("fingerprint", ""), values=(
+                r.get("model", ""), r.get("count", 0),
+                f"{r.get('estPredictedSavingsUsd', 0):.4f}", r.get("status", "observed"),
+            ))
+        self.ao_status_var.set(f"Loaded {len(self._candidate_rows)} candidate(s).")
+
+    def _optimize_selected(self) -> None:
+        selected = self.ao_tree.selection()
+        if not selected:
+            self.ao_status_var.set("Select one or more candidates first.")
+            return
+        sidecar = self.po_sidecar_url_var.get().strip()
+        if not sidecar:
+            self.ao_status_var.set("Set the Sidecar URL (Prompt optimization section) first.")
+            return
+        target = self.ao_target_var.get().strip() or self.po_target_var.get().strip()
+        fallback = self.ao_fallback_var.get().strip() or self.po_fallback_var.get().strip()
+        cand_path = self.ao_candidates_path_var.get().strip()
+        opt_path = self.ao_optimized_path_var.get().strip()
+        rows_by_fp = {r.get("fingerprint"): r for r in getattr(self, "_candidate_rows", [])}
+
+        done, failed = 0, 0
+        for fp in selected:
+            row = rows_by_fp.get(fp)
+            if row is None:
+                continue
+            candidates_io.update_status(cand_path, fp, "optimizing")
+            try:
+                result = candidates_io.optimize_candidate(
+                    sidecar_url=sidecar,
+                    class_signature=row.get("sampleClassSignature", fp),
+                    target_model=target,
+                    fallback_model=fallback,
+                    sample_messages=[{"role": "user", "content": ""}],
+                )
+                candidates_io.write_optimized(opt_path, {
+                    "fingerprint": fp,
+                    "simhash": row.get("simhash", ""),
+                    "template": result["template"],
+                    "qualityScore": result.get("qualityScore", 0.0),
+                    "predictedSavingsUsd": result.get("predictedSavingsUsd", 0.0),
+                    "targetModel": target,
+                    "optimizedAt": int(__import__("time").time() * 1000),
+                })
+                candidates_io.update_status(cand_path, fp, "optimized")
+                done += 1
+            except RuntimeError as exc:
+                candidates_io.update_status(cand_path, fp, "observed")
+                self.ao_status_var.set(f"Failed {fp[:24]}: {exc}")
+                failed += 1
+        self._reload_candidates()
+        if failed == 0:
+            self.ao_status_var.set(f"Optimized {done} candidate(s).")
+
     def _build_audit_tab(self) -> None:
         f = ttk.Frame(self.nb, padding=12)
         self.nb.add(f, text="Audit")
@@ -1866,6 +1970,12 @@ class AdminApp:
         self.po_gate_reuse_var.set(str(gate.get("defaultExpectedReuse", "") or ""))
         self.po_gate_cheap_rate_var.set(str(gate.get("defaultCheapModelSuccessRate", "") or ""))
 
+        ao = cfg.get("autoOptimization") or {}
+        self.ao_candidates_path_var.set(str(ao.get("candidatesPath", "") or ""))
+        self.ao_optimized_path_var.set(str(ao.get("optimizedStorePath", "") or ""))
+        self.ao_target_var.set(str(ao.get("targetModel", "") or ""))
+        self.ao_fallback_var.set(str(ao.get("fallbackModel", "") or ""))
+
     def _gather_optimization_into_config(self, cfg: dict[str, Any]) -> None:
         # Telemetry export
         if self.telemetry_enabled_var.get():
@@ -1944,6 +2054,19 @@ class AdminApp:
             cfg["promptOptimization"] = po
         else:
             cfg.pop("promptOptimization", None)
+
+        # Auto-optimization candidates
+        ao_candidates = self.ao_candidates_path_var.get().strip()
+        if ao_candidates:
+            cfg["autoOptimization"] = {
+                "enabled": True,
+                "candidatesPath": ao_candidates,
+                "optimizedStorePath": self.ao_optimized_path_var.get().strip(),
+                "referencesDir": (cfg.get("autoOptimization") or {}).get("referencesDir", "./gepa-references"),
+                "targetModel": self.ao_target_var.get().strip(),
+            }
+        else:
+            cfg.pop("autoOptimization", None)
 
     def validate_only(self) -> bool:
         cfg = self._gather_into_config()
