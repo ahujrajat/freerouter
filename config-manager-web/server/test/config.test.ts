@@ -1,0 +1,31 @@
+import { describe, it, expect } from 'vitest'
+import { loadServerConfig } from '../src/config.js'
+
+describe('loadServerConfig', () => {
+  const base = {
+    OIDC_ISSUER: 'https://idp.example.com',
+    OIDC_CLIENT_ID: 'client',
+    OIDC_CLIENT_SECRET: 'secret',
+    OIDC_REDIRECT_URI: 'https://app.example.com/auth/callback',
+    SESSION_SECRET: 'x'.repeat(32),
+    ENVIRONMENTS_FILE: '/etc/fr/environments.json',
+    AUDIT_LOG_FILE: '/var/log/fr-admin-audit.jsonl',
+  }
+
+  it('parses a complete environment', () => {
+    const cfg = loadServerConfig(base)
+    expect(cfg.oidc.issuer).toBe('https://idp.example.com')
+    expect(cfg.oidc.groupsClaim).toBe('groups')   // default
+    expect(cfg.port).toBe(7700)                     // default
+  })
+
+  it('throws when a required var is missing', () => {
+    const rest = { ...base }
+    delete (rest as Record<string, string | undefined>).OIDC_CLIENT_ID
+    expect(() => loadServerConfig(rest)).toThrow(/OIDC_CLIENT_ID/)
+  })
+
+  it('throws when SESSION_SECRET is shorter than 32 chars', () => {
+    expect(() => loadServerConfig({ ...base, SESSION_SECRET: 'short' })).toThrow(/SESSION_SECRET/)
+  })
+})
