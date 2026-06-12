@@ -26,3 +26,30 @@ export function validateConfigPayload(config: unknown): ValidationOutcome {
 
   return { ok: messages.length === 0, messages }
 }
+
+const VALID_RULE_ACTIONS = new Set(['pin', 'strategy', 'block'])
+
+/** Structural validation for a rules array (the JSON file FileRulesSource reads). */
+export function validateRulesPayload(rules: unknown): ValidationOutcome {
+  if (!Array.isArray(rules)) {
+    return { ok: false, messages: ['rules must be a JSON array'] }
+  }
+  const messages: string[] = []
+  rules.forEach((r, i) => {
+    const rule = r as Record<string, unknown>
+    const at = `rules[${i}]`
+    if (typeof rule.id !== 'string' || rule.id === '') messages.push(`${at}.id must be a non-empty string`)
+    if (typeof rule.match !== 'object' || rule.match === null) messages.push(`${at}.match must be an object`)
+    const action = rule.action as Record<string, unknown> | undefined
+    if (action === undefined || typeof action !== 'object') {
+      messages.push(`${at}.action must be an object`)
+    } else if (typeof action.type !== 'string' || !VALID_RULE_ACTIONS.has(action.type)) {
+      messages.push(`${at}.action.type must be one of: ${[...VALID_RULE_ACTIONS].join(', ')}`)
+    } else if (action.type === 'pin' && typeof action.model !== 'string') {
+      messages.push(`${at}.action.model is required for a pin rule`)
+    } else if (action.type === 'block' && typeof action.reason !== 'string') {
+      messages.push(`${at}.action.reason is required for a block rule`)
+    }
+  })
+  return { ok: messages.length === 0, messages }
+}

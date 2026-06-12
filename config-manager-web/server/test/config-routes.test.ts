@@ -67,4 +67,54 @@ describe('config routes', () => {
     expect(res.statusCode).toBe(401)
     await app.close()
   })
+
+  it('reads and writes the rules resource', async () => {
+    const app = await buildTestApp()
+    const cookie = await login(app)
+    const read = await app.inject({ method: 'GET', url: '/api/env/dev/rules', headers: { cookie } })
+    expect(read.statusCode).toBe(200)
+    expect(read.json().data).toEqual([])
+    const { version } = read.json()
+    const write = await app.inject({
+      method: 'PUT', url: '/api/env/dev/rules', headers: { cookie },
+      payload: { data: [{ id: 'r1', match: {}, action: { type: 'block', reason: 'x' } }], version },
+    })
+    expect(write.statusCode).toBe(200)
+    expect(write.json().data[0].id).toBe('r1')
+    await app.close()
+  })
+
+  it('rejects invalid rules with 422', async () => {
+    const app = await buildTestApp()
+    const cookie = await login(app)
+    const { version } = (await app.inject({ method: 'GET', url: '/api/env/dev/rules', headers: { cookie } })).json()
+    const res = await app.inject({ method: 'PUT', url: '/api/env/dev/rules', headers: { cookie }, payload: { data: [{ id: 'x' }], version } })
+    expect(res.statusCode).toBe(422)
+    await app.close()
+  })
+
+  it('reads and writes the env resource', async () => {
+    const app = await buildTestApp()
+    const cookie = await login(app)
+    const read = await app.inject({ method: 'GET', url: '/api/env/dev/env', headers: { cookie } })
+    expect(read.statusCode).toBe(200)
+    expect(read.json().data).toEqual({})
+    const { version } = read.json()
+    const write = await app.inject({
+      method: 'PUT', url: '/api/env/dev/env', headers: { cookie },
+      payload: { data: { GEMINI_API_KEY: 'abc' }, version },
+    })
+    expect(write.statusCode).toBe(200)
+    expect(write.json().data.GEMINI_API_KEY).toBe('abc')
+    await app.close()
+  })
+
+  it('forbids a viewer from writing rules (403)', async () => {
+    const app = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const cookie = await login(app)
+    const { version } = (await app.inject({ method: 'GET', url: '/api/env/dev/rules', headers: { cookie } })).json()
+    const res = await app.inject({ method: 'PUT', url: '/api/env/dev/rules', headers: { cookie }, payload: { data: [], version } })
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
 })
