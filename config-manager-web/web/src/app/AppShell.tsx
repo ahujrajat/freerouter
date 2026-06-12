@@ -4,10 +4,22 @@ import type { EnvSummary, MeResponse } from '../types.js'
 import { EnvSwitcher } from './EnvSwitcher.js'
 import { GeneralSection } from '../sections/GeneralSection.js'
 import { ProvidersSection } from '../sections/ProvidersSection.js'
+import { RateLimitSection } from '../sections/RateLimitSection.js'
+import { BudgetsSection } from '../sections/BudgetsSection.js'
+import { RulesSection } from '../sections/RulesSection.js'
+import { PricingSection } from '../sections/PricingSection.js'
+import { OptimizationSection } from '../sections/OptimizationSection.js'
+import { EnvVarsSection } from '../sections/EnvVarsSection.js'
 
 const SECTIONS = [
   { id: 'general', label: 'General' },
   { id: 'providers', label: 'Providers' },
+  { id: 'ratelimit', label: 'Rate Limit' },
+  { id: 'budgets', label: 'Budgets' },
+  { id: 'rules', label: 'Rules' },
+  { id: 'pricing', label: 'Pricing Overrides' },
+  { id: 'optimization', label: 'Optimization' },
+  { id: 'envvars', label: 'Env Vars' },
 ] as const
 type SectionId = typeof SECTIONS[number]['id']
 
@@ -43,9 +55,19 @@ export function AppShell({ me }: { me: MeResponse }) {
           ))}
         </nav>
         <main>
-          {envId === '' ? <div className="card">No environments available to you.</div>
-            : section === 'general' ? <GeneralSection envId={envId} canWrite={canWrite} />
-            : <ProvidersSection envId={envId} canWrite={canWrite} />}
+          {envId === '' ? <div className="card">No environments available to you.</div> : (() => {
+            const props = { envId, canWrite }
+            switch (section) {
+              case 'general': return <GeneralSection {...props} />
+              case 'providers': return <ProvidersSection {...props} />
+              case 'ratelimit': return <RateLimitSection {...props} />
+              case 'budgets': return <BudgetsSection {...props} />
+              case 'rules': return <RulesSection {...props} />
+              case 'pricing': return <PricingSection {...props} />
+              case 'optimization': return <OptimizationSection {...props} />
+              case 'envvars': return <EnvVarsSection {...props} />
+            }
+          })()}
         </main>
       </div>
     </div>
