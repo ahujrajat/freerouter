@@ -32,7 +32,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(secureSession, {
     key: sessionKey(deps.sessionSecret),
     cookieName: SESSION_COOKIE_NAME,
-    cookie: { path: '/', httpOnly: true, sameSite: 'lax' },
+    cookie: { path: '/', httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' },
   })
 
   app.decorate('deps', deps)
