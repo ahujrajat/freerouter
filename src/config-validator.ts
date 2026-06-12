@@ -8,7 +8,11 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   'rateLimit', 'budgets', 'allowedModels', 'blockedProviders',
   'maxInputLength', 'promptInjectionGuard', 'requestSigning',
   'keyExpiryMs', 'audit', 'providers', 'pricingOverrides',
+  'spendPersistence', 'telemetryExport', 'shadowRouter',
+  'promptOptimization', 'autoOptimization', 'costOptimization',
+  'pricingRefresh', 'rules', 'rulesRefresh',
   'onBudgetWarning', 'onBudgetExceeded', 'onForecastAtRisk', 'onRequestComplete',
+  'onPricingRefreshed', 'onRulesRefreshed',
 ])
 
 const VALID_BUDGET_WINDOWS = new Set([

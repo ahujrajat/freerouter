@@ -51,6 +51,21 @@ describe('Config Loader', () => {
   })
 })
 
+describe('validateConfigKeys — full RouterConfig key coverage', () => {
+  it('accepts all file-loadable RouterConfig top-level keys', () => {
+    const cfg = {
+      masterKey: 'x', defaultProvider: 'g', defaultModel: 'm', keyExpiryMs: 1,
+      maxInputLength: 1, promptInjectionGuard: true, requestSigning: true,
+      blockedProviders: [], allowedModels: [], rateLimit: {}, budgets: [],
+      providers: {}, audit: {}, pricingOverrides: {},
+      spendPersistence: {}, telemetryExport: {}, shadowRouter: {},
+      promptOptimization: {}, autoOptimization: {}, costOptimization: {},
+      pricingRefresh: {}, rules: {}, rulesRefresh: {},
+    }
+    expect(validateConfigKeys(cfg)).toEqual([])
+  })
+})
+
 describe('FreeRouter.fromFile', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
