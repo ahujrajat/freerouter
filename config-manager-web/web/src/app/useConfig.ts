@@ -13,7 +13,10 @@ export interface UseConfig<T extends object> {
   save: (data: T) => Promise<void>
 }
 
-export function useConfig<T extends object = Record<string, unknown>>(envId: string): UseConfig<T> {
+export function useConfig<T extends object = Record<string, unknown>>(
+  envId: string,
+  resource: 'config' | 'rules' | 'env' = 'config',
+): UseConfig<T> {
   const [data, setData] = useState<T | null>(null)
   const [version, setVersion] = useState('')
   const [loading, setLoading] = useState(true)
@@ -23,17 +26,17 @@ export function useConfig<T extends object = Record<string, unknown>>(envId: str
 
   const reload = useCallback(() => {
     setLoading(true); setConflict(false); setErrors([])
-    api.get<VersionedDoc<T>>(`/api/env/${envId}/config`)
+    api.get<VersionedDoc<T>>(`/api/env/${envId}/${resource}`)
       .then((doc) => { setData(doc.data); setVersion(doc.version) })
       .finally(() => setLoading(false))
-  }, [envId])
+  }, [envId, resource])
 
   useEffect(reload, [reload])
 
   const save = useCallback(async (next: T) => {
     setErrors([]); setConflict(false)
     try {
-      const doc = await api.put<VersionedDoc<T>>(`/api/env/${envId}/config`, { data: next, version })
+      const doc = await api.put<VersionedDoc<T>>(`/api/env/${envId}/${resource}`, { data: next, version })
       setData(doc.data); setVersion(doc.version)
       setToast('Saved'); setTimeout(() => setToast(null), 2000)
     } catch (e) {
@@ -41,7 +44,7 @@ export function useConfig<T extends object = Record<string, unknown>>(envId: str
       else if (e instanceof ApiError && e.status === 422) setErrors(e.messages ?? ['Invalid configuration'])
       else throw e
     }
-  }, [envId, version])
+  }, [envId, resource, version])
 
   return { data, version, loading, conflict, errors, toast, reload, save }
 }
