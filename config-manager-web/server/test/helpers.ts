@@ -27,6 +27,14 @@ export class FakeOidc implements OidcProvider {
   async exchange(): Promise<Claims> { return this.claims }
 }
 
+/** Rebuild a Cookie request header from inject()'s parsed Set-Cookie list,
+ *  re-encoding values the way a browser would replay them (so secure-session's
+ *  `cipher;nonce` separator that set-cookie-parser URL-decoded to a literal ';'
+ *  is restored to '%3B'). */
+export function cookieHeader(cookies: Array<{ name: string; value: string }>): string {
+  return cookies.map(c => `${c.name}=${encodeURIComponent(c.value)}`).join('; ')
+}
+
 export function buildTestApp(opts: { claims?: Claims } = {}): ReturnType<typeof buildApp> {
   const { dir, environmentsFile } = makeTempEnv()
   const deps: AppDeps = {

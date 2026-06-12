@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildTestApp } from './helpers.js'
+import { buildTestApp, cookieHeader } from './helpers.js'
 
 describe('auth routes', () => {
   it('/auth/me is 401 before login', async () => {
@@ -20,11 +20,11 @@ describe('auth routes', () => {
   it('full login flow: callback establishes a session, /auth/me returns the user', async () => {
     const app = await buildTestApp({ claims: { sub: 'u1', name: 'Ada', groups: ['fr-admins'] } })
     const login = await app.inject({ method: 'GET', url: '/auth/login' })
-    const cookies = login.cookies.map(c => `${c.name}=${c.value}`).join('; ')
+    const cookies = cookieHeader(login.cookies)
     // Our FakeOidc ignores params; provide state matching the cookie via the login redirect.
     const cb = await app.inject({ method: 'GET', url: '/auth/callback?code=x&state=test', headers: { cookie: cookies } })
     expect(cb.statusCode).toBe(302)
-    const sessionCookies = cb.cookies.map(c => `${c.name}=${c.value}`).join('; ')
+    const sessionCookies = cookieHeader(cb.cookies)
     const me = await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: sessionCookies } })
     expect(me.statusCode).toBe(200)
     expect(me.json()).toMatchObject({ subject: 'u1', name: 'Ada' })

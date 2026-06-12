@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { buildTestApp } from './helpers.js'
+import { buildTestApp, cookieHeader } from './helpers.js'
 
 async function login(app: Awaited<ReturnType<typeof buildTestApp>>): Promise<string> {
   const loginRes = await app.inject({ method: 'GET', url: '/auth/login' })
-  const c1 = loginRes.cookies.map(c => `${c.name}=${c.value}`).join('; ')
+  const c1 = cookieHeader(loginRes.cookies)
   const cb = await app.inject({ method: 'GET', url: '/auth/callback?code=x&state=test', headers: { cookie: c1 } })
-  return cb.cookies.map(c => `${c.name}=${c.value}`).join('; ')
+  return cookieHeader(cb.cookies)
 }
 
 describe('config routes', () => {
