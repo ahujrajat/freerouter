@@ -1,0 +1,40 @@
+:root {
+  --acc-purple: #A100FF;
+  --acc-purple-hover: #8A00D9;
+  --surface: #FFFFFF;
+  --surface-2: #F2F2F2;
+  --border: #D6D6D6;
+  --text: #1A1A1A;
+  --text-muted: #5A5A5A;
+  --danger: #C4001D;
+  --ok: #1B7F3B;
+  --radius: 6px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); color: var(--text); background: var(--surface-2); }
+a { color: var(--acc-purple); }
+.btn {
+  background: var(--acc-purple); color: #fff; border: none; border-radius: var(--radius);
+  padding: 8px 14px; font-weight: 600; cursor: pointer;
+}
+.btn:hover { background: var(--acc-purple-hover); }
+.btn:disabled { background: var(--border); cursor: not-allowed; }
+.btn--ghost { background: transparent; color: var(--acc-purple); border: 1px solid var(--acc-purple); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+input, select {
+  width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+}
+input:focus, select:focus { outline: 2px solid var(--acc-purple); outline-offset: 1px; }
+.field { margin-bottom: 14px; }
+.field > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.header { display: flex; align-items: center; gap: 16px; background: var(--surface); border-bottom: 2px solid var(--acc-purple); padding: 10px 16px; }
+.header__brand { font-weight: 700; color: var(--acc-purple); }
+.header__spacer { flex: 1; }
+.layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 16px; }
+.nav a { display: block; padding: 8px 10px; border-radius: var(--radius); color: var(--text); text-decoration: none; }
+.nav a.active { background: var(--surface); border-left: 3px solid var(--acc-purple); font-weight: 600; }
+.banner { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; }
+.banner--conflict { background: #FDECEC; color: var(--danger); border: 1px solid var(--danger); }
+.toast { position: fixed; bottom: 16px; right: 16px; background: var(--text); color: #fff; padding: 10px 14px; border-radius: var(--radius); }
