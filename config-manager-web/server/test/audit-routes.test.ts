@@ -18,6 +18,8 @@ describe('audit route', () => {
     const records = res.json()
     expect(Array.isArray(records)).toBe(true)
     expect(records[0]).toMatchObject({ action: 'config:save', environment: 'dev' })
+    expect(typeof records[0].description).toBe('string')
+    expect(records[0].description).toMatch(/configuration/i)
     await app.close()
   })
 

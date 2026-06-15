@@ -56,6 +56,7 @@ export async function registerConfigRoutes(app: FastifyInstance): Promise<void> 
       const next = store.write(body.data as Record<string, unknown>, body.version)
       audit.record({
         subject: user.subject, environment: id, action: 'config:save', target: 'config',
+        description: 'Updated configuration',
         beforeHash: before.version, afterHash: next.version,
       })
       return reply.send(next)
@@ -102,7 +103,7 @@ export async function registerConfigRoutes(app: FastifyInstance): Promise<void> 
     const before = readRules(env.paths.rules)
     try {
       const next = store.write(body.data as object, body.version)
-      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'rules:save', target: 'rules', beforeHash: before.version, afterHash: next.version })
+      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'rules:save', target: 'rules', description: `Saved rules (${(body.data as unknown[]).length} rule(s))`, beforeHash: before.version, afterHash: next.version })
       return reply.send(next)
     } catch (err) {
       if (err instanceof StaleVersionError) return reply.code(409).send({ error: 'version conflict' })
@@ -130,7 +131,7 @@ export async function registerConfigRoutes(app: FastifyInstance): Promise<void> 
     const before = store.read()
     try {
       const next = store.write(body.data as Record<string, string>, body.version)
-      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'env:save', target: 'env', beforeHash: before.version, afterHash: next.version })
+      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'env:save', target: 'env', description: `Saved environment variables (${Object.keys(body.data as Record<string, string>).length} key(s))`, beforeHash: before.version, afterHash: next.version })
       return reply.send(next)
     } catch (err) {
       if (err instanceof StaleVersionError) return reply.code(409).send({ error: 'version conflict' })

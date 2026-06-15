@@ -78,7 +78,21 @@ export async function registerCandidatesRoutes(app: FastifyInstance): Promise<vo
     const candStore = new JsonFileStore<Candidate[]>(env.paths.candidates)
     candStore.write(candidates, candStore.read().version)
 
-    audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'candidate:optimize', target: `candidate:${fingerprint}` })
+    audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'candidate:optimize', target: `candidate:${fingerprint}`, description: `Optimized candidate ${fingerprint} → ${targetModel}` })
     return reply.send(cand)
+  })
+
+  app.delete('/api/env/:id/candidates/:fingerprint', async (req, reply) => {
+    const env = resolve(req, reply, true)
+    if (env === undefined) return
+    const fingerprint = decodeURIComponent((req.params as { fingerprint: string }).fingerprint)
+    const store = new JsonFileStore<Candidate[]>(env.paths.candidates)
+    const candidates = readArray<Candidate>(env.paths.candidates)
+    const filtered = candidates.filter(c => c.fingerprint !== fingerprint)
+    if (filtered.length !== candidates.length) {
+      store.write(filtered, store.read().version)
+      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'candidate:delete', target: `candidate:${fingerprint}`, description: `Deleted candidate ${fingerprint}` })
+    }
+    return reply.send({ ok: true })
   })
 }

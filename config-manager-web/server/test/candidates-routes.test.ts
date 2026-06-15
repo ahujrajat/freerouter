@@ -40,4 +40,25 @@ describe('candidates routes', () => {
     expect(res.statusCode).toBe(403)
     await app.close()
   })
+
+  it('deletes a candidate and returns { ok: true }', async () => {
+    const { app, dir } = await buildTestApp({ withDir: true })
+    const cookie = await login(app)
+    writeFileSync(`${dir}/cand.json`, JSON.stringify([{ fingerprint: 'eh:gpt-4o:ab', simhash: '00000000000000ab', model: 'gpt-4o', count: 5, totalCostUsd: 0.2, lastSeen: 1, estPredictedSavingsUsd: 0.05, estBreakEvenReqs: 4, sampleClassSignature: 'eh:gpt-4o:ab', status: 'observed' }]))
+    const res = await app.inject({ method: 'DELETE', url: '/api/env/dev/candidates/eh:gpt-4o:ab', headers: { cookie } })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ ok: true })
+    // candidate is gone from the file
+    const remaining = JSON.parse(readFileSync(`${dir}/cand.json`, 'utf-8'))
+    expect(remaining).toEqual([])
+    await app.close()
+  })
+
+  it('forbids a viewer from deleting a candidate (403)', async () => {
+    const { app } = await buildTestApp({ withDir: true, claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const cookie = await login(app)
+    const res = await app.inject({ method: 'DELETE', url: '/api/env/dev/candidates/x', headers: { cookie } })
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
 })

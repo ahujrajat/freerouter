@@ -49,7 +49,7 @@ export async function registerByokRoutes(app: FastifyInstance): Promise<void> {
       const record = await backend.materialize(body.secret, { provider, ...(body.ref !== undefined && { ref: body.ref }) })
       const store = new ByokStore(env.paths.byok)
       store.upsert(provider, record)
-      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'byok:set', target: `byok:${provider}` })
+      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'byok:set', target: `byok:${provider}`, description: `Set BYOK key for "${provider}" via ${body.backend} backend` })
       const view = store.list().find(e => e.provider === provider)
       return reply.send(view)
     } catch (err) {
@@ -66,7 +66,7 @@ export async function registerByokRoutes(app: FastifyInstance): Promise<void> {
     if (record !== undefined) {
       try { await keyBackends.get(record.backend).destroy(record) } catch { /* best-effort external cleanup */ }
       store.remove(provider)
-      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'byok:delete', target: `byok:${provider}` })
+      audit.record({ subject: currentUser(req)!.subject, environment: (req.params as { id: string }).id, action: 'byok:delete', target: `byok:${provider}`, description: `Deleted BYOK key for "${provider}"` })
     }
     return reply.send({ ok: true })
   })

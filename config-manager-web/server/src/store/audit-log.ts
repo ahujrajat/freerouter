@@ -6,6 +6,7 @@ export interface AuditRecordInput {
   environment: string
   action: string
   target: string
+  description?: string
   beforeHash?: string
   afterHash?: string
 }
