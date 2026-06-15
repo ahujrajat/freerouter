@@ -73,7 +73,7 @@ p { margin: 0 0 12px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   background: var(--acc-purple); color: #fff; border: 1px solid transparent;
   border-radius: var(--radius-sm); padding: 9px 16px; font: inherit; font-weight: 600;
-  cursor: pointer; transition: background .15s ease, box-shadow .15s ease, transform .02s ease;
+  white-space: nowrap; cursor: pointer; transition: background .15s ease, box-shadow .15s ease, transform .02s ease;
 }
 .btn:hover { background: var(--acc-purple-700); }
 .btn:active { transform: translateY(1px); }

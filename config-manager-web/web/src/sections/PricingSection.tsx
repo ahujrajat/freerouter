@@ -174,8 +174,11 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
         )}
         {canWrite && <Button onClick={() => setDraft(blankDraft())}>Add override</Button>}
         {canWrite && <Button variant="ghost" onClick={() => { setFetchOpen(true); setFetched({}) }}>Fetch from source</Button>}
-        <Button variant="ghost" onClick={() => downloadJson('pricing-overrides.json', over)}>Download current</Button>
-        <Button variant="ghost" onClick={() => downloadJson('pricing-template.json', PRICING_TEMPLATE)}>Download template</Button>
+        <Button variant="ghost" onClick={() => overKeys.length === 0
+          ? downloadJson('pricing-template.json', PRICING_TEMPLATE)
+          : downloadJson('pricing-overrides.json', over)}>
+          {overKeys.length === 0 ? 'Download template' : 'Download current'}
+        </Button>
         {canWrite && (
           <label className="btn btn--ghost" style={{ cursor: 'pointer' }}>
             Upload pricing file
