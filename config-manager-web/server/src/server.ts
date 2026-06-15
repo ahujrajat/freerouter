@@ -11,6 +11,7 @@ import { ReferenceKeyBackend } from './byok/reference-backend.js'
 import { VaultClient } from './byok/clients/vault-client.js'
 import type { BackendName, KeyBackend } from './byok/types.js'
 import { LibraryPricingFetcher } from './pricing/pricing-fetcher.js'
+import { HttpSidecarClient } from './optimization/sidecar-client.js'
 import { liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
 
 async function main(): Promise<void> {
@@ -33,6 +34,10 @@ async function main(): Promise<void> {
     openrouter: () => openRouterPricingSource(),
   })
 
+  const sidecar = cfg.gepaSidecarUrl !== undefined
+    ? new HttpSidecarClient(cfg.gepaSidecarUrl, cfg.gepaSidecarToken)
+    : undefined
+
   const app = await buildApp({
     sessionSecret: cfg.sessionSecret,
     oidc, environments, roles, audit,
@@ -40,6 +45,7 @@ async function main(): Promise<void> {
     afterLoginRedirect: '/',
     keyBackends,
     pricingFetcher,
+    ...(sidecar !== undefined && { sidecar }),
   })
   await app.listen({ host: '0.0.0.0', port: cfg.port })
   // eslint-disable-next-line no-console

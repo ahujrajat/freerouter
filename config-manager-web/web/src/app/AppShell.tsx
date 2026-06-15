@@ -11,6 +11,8 @@ import { PricingSection } from '../sections/PricingSection.js'
 import { OptimizationSection } from '../sections/OptimizationSection.js'
 import { EnvVarsSection } from '../sections/EnvVarsSection.js'
 import { ByokSection } from '../sections/ByokSection.js'
+import { CandidatesSection } from '../sections/CandidatesSection.js'
+import { AuditSection } from '../sections/AuditSection.js'
 
 const SECTIONS = [
   { id: 'general', label: 'General' },
@@ -22,6 +24,8 @@ const SECTIONS = [
   { id: 'optimization', label: 'Optimization' },
   { id: 'envvars', label: 'Env Vars' },
   { id: 'byok', label: 'BYOK Keys' },
+  { id: 'candidates', label: 'Candidates' },
+  { id: 'audit', label: 'Audit' },
 ] as const
 type SectionId = typeof SECTIONS[number]['id']
 
@@ -69,6 +73,8 @@ export function AppShell({ me }: { me: MeResponse }) {
               case 'optimization': return <OptimizationSection {...props} />
               case 'envvars': return <EnvVarsSection {...props} />
               case 'byok': return <ByokSection {...props} />
+              case 'candidates': return <CandidatesSection {...props} />
+              case 'audit': return <AuditSection {...props} />
             }
           })()}
         </main>
