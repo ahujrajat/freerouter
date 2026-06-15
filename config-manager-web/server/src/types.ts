@@ -16,6 +16,8 @@ export interface ServerConfig {
   environmentsFile: string
   auditLogFile: string
   byokMasterKey?: string
+  gepaSidecarUrl?: string
+  gepaSidecarToken?: string
 }
 
 export interface SessionUser {

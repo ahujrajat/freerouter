@@ -51,3 +51,21 @@ describe('loadServerConfig – BYOK', () => {
     expect(cfg.byokMasterKey).toBeUndefined()
   })
 })
+
+describe('loadServerConfig — GEPA sidecar', () => {
+  const base = {
+    OIDC_ISSUER: 'https://idp', OIDC_CLIENT_ID: 'c', OIDC_CLIENT_SECRET: 's',
+    OIDC_REDIRECT_URI: 'https://app/cb', SESSION_SECRET: 'x'.repeat(32),
+    ENVIRONMENTS_FILE: '/e.json', AUDIT_LOG_FILE: '/a.jsonl',
+  }
+  it('parses GEPA_SIDECAR_URL and token when present', () => {
+    const cfg = loadServerConfig({ ...base, GEPA_SIDECAR_URL: 'http://127.0.0.1:8765', GEPA_SIDECAR_TOKEN: 'tok' })
+    expect(cfg.gepaSidecarUrl).toBe('http://127.0.0.1:8765')
+    expect(cfg.gepaSidecarToken).toBe('tok')
+  })
+  it('leaves them undefined when absent', () => {
+    const cfg = loadServerConfig(base)
+    expect(cfg.gepaSidecarUrl).toBeUndefined()
+    expect(cfg.gepaSidecarToken).toBeUndefined()
+  })
+})
