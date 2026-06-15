@@ -86,7 +86,7 @@ describe('PricingSection', () => {
     expect(body.data.pricingOverrides).not.toHaveProperty('gemini-2.5-flash')
   })
 
-  it('upload merge: uploading a manifest JSON adds entries; Save persists them', async () => {
+  it('upload merge: uploading a CSV adds entries; Save persists them', async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = []
     mockFetchSequence([
       () => new Response(JSON.stringify({ data: { pricingOverrides: {} }, version: 'v1' }), { status: 200 }),
@@ -94,11 +94,11 @@ describe('PricingSection', () => {
     ])
     render(<PricingSection envId="dev" canWrite={true} />)
     await screen.findByRole('button', { name: /save/i })
-    // Upload a manifest-shaped JSON
-    const fileContent = JSON.stringify({ openai: { 'gpt-4o': { input: 2.5, output: 10 } } })
+    // Upload a CSV with a header row + one model (cachedInput left blank)
+    const csv = 'model,input,output,cachedInput\ngpt-4o,2.5,10,\n'
     await userEvent.upload(
-      screen.getByLabelText('Upload pricing file'),
-      new File([fileContent], 'p.json', { type: 'application/json' })
+      screen.getByLabelText('Upload pricing CSV'),
+      new File([csv], 'pricing.csv', { type: 'text/csv' })
     )
     // gpt-4o row should appear
     expect(await screen.findByText('gpt-4o')).toBeInTheDocument()

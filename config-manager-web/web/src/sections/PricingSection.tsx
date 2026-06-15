@@ -36,23 +36,65 @@ function draftToRate(d: DraftState): Rate {
   }
 }
 
-function downloadJson(filename: string, obj: unknown): void {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' })
+const CSV_HEADER = 'model,input,output,cachedInput'
+
+function csvField(s: string): string {
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+/** Serialize pricing overrides to CSV (model,input,output,cachedInput). */
+function toCsv(rows: Record<string, Rate>): string {
+  const lines = [CSV_HEADER]
+  for (const [model, r] of Object.entries(rows)) {
+    lines.push([csvField(model), String(r.input), String(r.output), r.cachedInput ?? ''].join(','))
+  }
+  return lines.join('\n') + '\n'
+}
+
+function downloadCsv(filename: string, rows: Record<string, Rate>): void {
+  const blob = new Blob([toCsv(rows)], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
   URL.revokeObjectURL(url)
 }
 
-function flattenPricing(parsed: unknown): Record<string, Rate> {
+/** Split one CSV line, honoring double-quoted fields (with "" escapes). */
+function splitCsvLine(line: string): string[] {
+  const out: string[] = []; let cur = ''; let q = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (q) {
+      if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++ } else q = false }
+      else cur += c
+    } else if (c === '"') q = true
+    else if (c === ',') { out.push(cur); cur = '' }
+    else cur += c
+  }
+  out.push(cur)
+  return out
+}
+
+/** Parse a pricing CSV into overrides. Accepts a header row (any column order
+ *  among model/input/output/cachedInput) or, if absent, assumes that order.
+ *  Rows missing a model or non-numeric input/output are skipped. */
+function parseCsv(text: string): Record<string, Rate> {
   const out: Record<string, Rate> = {}
-  if (typeof parsed !== 'object' || parsed === null) return out
-  const isRate = (v: unknown): v is Rate =>
-    typeof v === 'object' && v !== null && typeof (v as Rate).input === 'number' && typeof (v as Rate).output === 'number'
-  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-    if (isRate(v)) { out[k] = v }                                   // flat: model -> rate
-    else if (typeof v === 'object' && v !== null) {                 // manifest: provider -> { model -> rate }
-      for (const [model, rate] of Object.entries(v as Record<string, unknown>)) if (isRate(rate)) out[model] = rate
-    }
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== '')
+  if (lines.length === 0) return out
+  const header = splitCsvLine(lines[0]!).map(h => h.trim().toLowerCase())
+  const hasHeader = header.includes('model') && header.includes('input') && header.includes('output')
+  const idx = hasHeader
+    ? { m: header.indexOf('model'), i: header.indexOf('input'), o: header.indexOf('output'), c: header.indexOf('cachedinput') }
+    : { m: 0, i: 1, o: 2, c: 3 }
+  for (const line of hasHeader ? lines.slice(1) : lines) {
+    const cells = splitCsvLine(line)
+    const model = (cells[idx.m] ?? '').trim()
+    const input = parseFloat((cells[idx.i] ?? '').trim())
+    const output = parseFloat((cells[idx.o] ?? '').trim())
+    if (model === '' || isNaN(input) || isNaN(output)) continue
+    const cachedRaw = idx.c >= 0 ? (cells[idx.c] ?? '').trim() : ''
+    const cached = cachedRaw === '' ? NaN : parseFloat(cachedRaw)
+    out[model] = { input, output, ...(!isNaN(cached) ? { cachedInput: cached } : {}) }
   }
   return out
 }
@@ -95,12 +137,10 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const text = reader.result as string
-        const parsed = JSON.parse(text)
-        const flat = flattenPricing(parsed)
-        if (Object.keys(flat).length === 0) { setUploadError('No valid pricing entries found in the file.'); return }
-        setOver(prev => ({ ...prev, ...flat }))
-      } catch (e) { setUploadError(`Invalid pricing file: ${(e as Error).message}`) }
+        const parsed = parseCsv(reader.result as string)
+        if (Object.keys(parsed).length === 0) { setUploadError('No valid rows found. Expected CSV columns: model, input, output, cachedInput.'); return }
+        setOver(prev => ({ ...prev, ...parsed }))
+      } catch (e) { setUploadError(`Invalid CSV: ${(e as Error).message}`) }
     }
     reader.onerror = () => { setUploadError('Failed to read file.') }
     reader.readAsText(file)
@@ -175,15 +215,15 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
         {canWrite && <Button onClick={() => setDraft(blankDraft())}>Add override</Button>}
         {canWrite && <Button variant="ghost" onClick={() => { setFetchOpen(true); setFetched({}) }}>Fetch from source</Button>}
         <Button variant="ghost" onClick={() => overKeys.length === 0
-          ? downloadJson('pricing-template.json', PRICING_TEMPLATE)
-          : downloadJson('pricing-overrides.json', over)}>
-          {overKeys.length === 0 ? 'Download template' : 'Download current'}
+          ? downloadCsv('pricing-template.csv', PRICING_TEMPLATE)
+          : downloadCsv('pricing-overrides.csv', over)}>
+          {overKeys.length === 0 ? 'Download template (CSV)' : 'Download current (CSV)'}
         </Button>
         {canWrite && (
           <label className="btn btn--ghost" style={{ cursor: 'pointer' }}>
-            Upload pricing file
-            <input type="file" accept="application/json,.json" style={{ display: 'none' }}
-              aria-label="Upload pricing file"
+            Upload CSV
+            <input type="file" accept="text/csv,.csv" style={{ display: 'none' }}
+              aria-label="Upload pricing CSV"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f) }} />
           </label>
         )}
