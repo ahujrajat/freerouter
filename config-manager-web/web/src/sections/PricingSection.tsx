@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useConfig } from '../app/useConfig.js'
+import { useRowSelection } from '../app/useRowSelection.js'
 import { api } from '../api.js'
 import { Field } from '../components/Field.js'
 import { TextInput } from '../components/TextInput.js'
@@ -35,11 +36,35 @@ function draftToRate(d: DraftState): Rate {
   }
 }
 
+function downloadJson(filename: string, obj: unknown): void {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
+function flattenPricing(parsed: unknown): Record<string, Rate> {
+  const out: Record<string, Rate> = {}
+  if (typeof parsed !== 'object' || parsed === null) return out
+  const isRate = (v: unknown): v is Rate =>
+    typeof v === 'object' && v !== null && typeof (v as Rate).input === 'number' && typeof (v as Rate).output === 'number'
+  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+    if (isRate(v)) { out[k] = v }                                   // flat: model -> rate
+    else if (typeof v === 'object' && v !== null) {                 // manifest: provider -> { model -> rate }
+      for (const [model, rate] of Object.entries(v as Record<string, unknown>)) if (isRate(rate)) out[model] = rate
+    }
+  }
+  return out
+}
+
 export function PricingSection({ envId, canWrite }: { envId: string; canWrite: boolean }) {
   const cfg = useConfig<Cfg>(envId)
   const [over, setOver] = useState<Overrides>({})
   const [draft, setDraft] = useState<DraftState | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   useEffect(() => { if (cfg.data !== null) setOver(cfg.data.pricingOverrides ?? {}) }, [cfg.data])
+
+  const sel = useRowSelection<string>()
 
   const [fetchOpen, setFetchOpen] = useState(false)
   const [source, setSource] = useState('litellm')
@@ -65,7 +90,26 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
   const pickedCount = fetchedModels.filter((m) => picked[m] === true).length
   const allFetchedPicked = fetchedModels.length > 0 && pickedCount === fetchedModels.length
 
+  const onUploadFile = (file: File) => {
+    setUploadError(null)
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const text = reader.result as string
+        const parsed = JSON.parse(text)
+        const flat = flattenPricing(parsed)
+        if (Object.keys(flat).length === 0) { setUploadError('No valid pricing entries found in the file.'); return }
+        setOver(prev => ({ ...prev, ...flat }))
+      } catch (e) { setUploadError(`Invalid pricing file: ${(e as Error).message}`) }
+    }
+    reader.onerror = () => { setUploadError('Failed to read file.') }
+    reader.readAsText(file)
+  }
+
   if (cfg.loading) return <div className="card">Loading…</div>
+
+  const overKeys = Object.keys(over)
+  const allSelected = overKeys.length > 0 && sel.count === overKeys.length
 
   const commit = (next: Overrides) => {
     setOver(next)
@@ -89,14 +133,23 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
     })
   }
 
+  const PRICING_TEMPLATE = { 'gpt-4o': { input: 2.5, output: 10, cachedInput: 1.25 }, 'gemini-2.5-flash': { input: 0.075, output: 0.3 } }
+
   return (
     <div className="card">
       <h2>Pricing Overrides</h2>
       {cfg.conflict && <ConflictBanner onReload={cfg.reload} />}
       {cfg.errors.length > 0 && <div className="banner banner--conflict" role="alert">{cfg.errors.join('; ')}</div>}
-      <Table headers={['Model', 'Input $/1M', 'Output $/1M', 'Cached $/1M', canWrite ? 'Actions' : '']}>
+      {uploadError && <div className="banner banner--conflict" role="alert">{uploadError}</div>}
+      <Table headers={[
+        overKeys.length > 0
+          ? <input key="sel" type="checkbox" aria-label="Select all" checked={allSelected} onChange={(e) => sel.setMany(overKeys, e.target.checked)} />
+          : '',
+        'Model', 'Input $/1M', 'Output $/1M', 'Cached $/1M', canWrite ? 'Actions' : ''
+      ]}>
         {Object.entries(over).map(([model, r]) => (
           <tr key={model}>
+            <td><input type="checkbox" aria-label={`Select ${model}`} checked={sel.isSelected(model)} onChange={() => sel.toggle(model)} /></td>
             <td>{model}</td>
             <td>{r.input}</td>
             <td>{r.output}</td>
@@ -110,8 +163,26 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
           </tr>
         ))}
       </Table>
+      {canWrite && sel.count > 0 && (
+        <Button variant="ghost" onClick={() => {
+          const next = { ...over }
+          for (const k of sel.selected) delete next[k]
+          commit(next)
+          sel.clear()
+        }}>Delete selected ({sel.count})</Button>
+      )}{' '}
       {canWrite && <Button onClick={() => setDraft(blankDraft())}>Add override</Button>}{' '}
       {canWrite && <Button variant="ghost" onClick={() => { setFetchOpen(true); setFetched({}) }}>Fetch from source</Button>}{' '}
+      <Button variant="ghost" onClick={() => downloadJson('pricing-overrides.json', over)}>Download current</Button>{' '}
+      <Button variant="ghost" onClick={() => downloadJson('pricing-template.json', PRICING_TEMPLATE)}>Download template</Button>{' '}
+      {canWrite && (
+        <label className="btn btn--ghost" style={{ cursor: 'pointer' }}>
+          Upload pricing file
+          <input type="file" accept="application/json,.json" style={{ display: 'none' }}
+            aria-label="Upload pricing file"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f) }} />
+        </label>
+      )}{' '}
       <Button disabled={!canWrite} onClick={() => commit(over)}>Save</Button>
       <Toast message={cfg.toast} />
 

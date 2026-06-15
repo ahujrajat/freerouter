@@ -3,6 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PricingSection } from '../src/sections/PricingSection.js'
 
+// Stub URL.createObjectURL / revokeObjectURL for download tests
+beforeEach(() => {
+  vi.stubGlobal('URL', {
+    ...URL,
+    createObjectURL: vi.fn(() => 'blob:fake'),
+    revokeObjectURL: vi.fn(),
+  })
+})
+
 function mockFetchSequence(handlers: Array<(u: string, i?: RequestInit) => Response>) {
   let i = 0
   vi.stubGlobal('fetch', vi.fn(async (u: string, init?: RequestInit) => handlers[Math.min(i++, handlers.length - 1)](u, init)))
@@ -53,6 +62,51 @@ describe('PricingSection', () => {
     await waitFor(() => expect(calls.some(c => c.url.includes('/pricing-fetch'))).toBe(true))
     const saveCall = calls.find(c => c.init?.method === 'PUT')!
     expect(JSON.parse(saveCall.init!.body as string).data.pricingOverrides['gpt-4o']).toMatchObject({ input: 2.5, output: 10 })
+  })
+
+  it('multi-select: Select all then Delete selected removes both overrides', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    mockFetchSequence([
+      () => new Response(JSON.stringify({ data: { pricingOverrides: { 'gpt-4o': { input: 2.5, output: 10 }, 'gemini-2.5-flash': { input: 0.075, output: 0.3 } } }, version: 'v1' }), { status: 200 }),
+      (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify({ data: {}, version: 'v2' }), { status: 200 }) },
+    ])
+    render(<PricingSection envId="dev" canWrite={true} />)
+    // Wait for overrides to load
+    expect(await screen.findByText('gpt-4o')).toBeInTheDocument()
+    // Select all via header checkbox
+    await userEvent.click(screen.getByRole('checkbox', { name: /select all/i }))
+    // Delete selected button should be visible
+    const deleteBtn = screen.getByRole('button', { name: /delete selected/i })
+    expect(deleteBtn).toBeInTheDocument()
+    await userEvent.click(deleteBtn)
+    // Should have PUT with empty pricingOverrides
+    await waitFor(() => expect(calls.some(c => c.init?.method === 'PUT')).toBe(true))
+    const body = JSON.parse(calls.find(c => c.init?.method === 'PUT')!.init!.body as string)
+    expect(body.data.pricingOverrides).not.toHaveProperty('gpt-4o')
+    expect(body.data.pricingOverrides).not.toHaveProperty('gemini-2.5-flash')
+  })
+
+  it('upload merge: uploading a manifest JSON adds entries; Save persists them', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    mockFetchSequence([
+      () => new Response(JSON.stringify({ data: { pricingOverrides: {} }, version: 'v1' }), { status: 200 }),
+      (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify({ data: {}, version: 'v2' }), { status: 200 }) },
+    ])
+    render(<PricingSection envId="dev" canWrite={true} />)
+    await screen.findByRole('button', { name: /save/i })
+    // Upload a manifest-shaped JSON
+    const fileContent = JSON.stringify({ openai: { 'gpt-4o': { input: 2.5, output: 10 } } })
+    await userEvent.upload(
+      screen.getByLabelText('Upload pricing file'),
+      new File([fileContent], 'p.json', { type: 'application/json' })
+    )
+    // gpt-4o row should appear
+    expect(await screen.findByText('gpt-4o')).toBeInTheDocument()
+    // Click Save to persist
+    await userEvent.click(screen.getByRole('button', { name: /save/i }))
+    await waitFor(() => expect(calls.some(c => c.init?.method === 'PUT')).toBe(true))
+    const body = JSON.parse(calls.find(c => c.init?.method === 'PUT')!.init!.body as string)
+    expect(body.data.pricingOverrides['gpt-4o']).toMatchObject({ input: 2.5, output: 10 })
   })
 
   it('Select all picks every fetched model; applying merges them all', async () => {

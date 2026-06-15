@@ -17,7 +17,7 @@ export function AuditSection(_props: { envId: string; canWrite: boolean }) {
         {rows.map((r, i) => (
           <tr key={i}>
             <td>{new Date(r.timestamp).toISOString().replace('T', ' ').slice(0, 19)}</td>
-            <td>{r.subject}</td><td>{r.environment}</td><td>{r.action}</td><td>{r.target}</td>
+            <td>{r.subject}</td><td>{r.environment}</td><td>{r.description ?? r.action}{r.description !== undefined && <> <span className="chip chip--muted">{r.action}</span></>}</td><td>{r.target}</td>
           </tr>
         ))}
       </Table>

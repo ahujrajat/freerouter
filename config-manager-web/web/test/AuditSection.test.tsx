@@ -15,6 +15,16 @@ describe('AuditSection', () => {
     expect(screen.getByText('prod')).toBeInTheDocument()
   })
 
+  it('renders description as main text with machine action chip when description is present', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([
+      { timestamp: 1749470000000, subject: 'bob', environment: 'dev', action: 'config:save', target: 'config', description: 'Saved configuration' },
+    ]), { status: 200 })))
+    render(<AuditSection envId="dev" canWrite={false} />)
+    expect(await screen.findByText('Saved configuration')).toBeInTheDocument()
+    // The machine action code should appear as a chip
+    expect(screen.getByText('config:save')).toBeInTheDocument()
+  })
+
   it('fetches from the global audit endpoint', async () => {
     const urls: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (u: string) => { urls.push(u); return new Response('[]', { status: 200 }) }))

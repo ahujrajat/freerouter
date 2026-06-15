@@ -11,5 +11,5 @@ export interface CandidateRow {
 }
 
 export interface AuditRow {
-  timestamp: number; subject: string; environment: string; action: string; target: string
+  timestamp: number; subject: string; environment: string; action: string; target: string; description?: string
 }
