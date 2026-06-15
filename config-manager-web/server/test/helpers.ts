@@ -11,11 +11,16 @@ import { LocalKeyBackend } from '../src/byok/local-backend.js'
 import { ReferenceKeyBackend } from '../src/byok/reference-backend.js'
 import type { SecretManagerClient } from '../src/byok/types.js'
 import type { PricingFetcher } from '../src/pricing/pricing-fetcher.js'
+import type { SidecarClient } from '../src/optimization/sidecar-client.js'
 
 class MemoryClient implements SecretManagerClient {
   store: Record<string, string> = {}
   async writeSecret(ref: string, secret: string) { this.store[ref] = secret }
   async secretExists(ref: string) { return ref in this.store }
+}
+
+const fakeSidecar: SidecarClient = {
+  async optimize(req) { return { template: `OPTIMIZED for ${req.classSignature}`, qualityScore: 0.9, predictedSavingsUsd: 0.05 } },
 }
 
 const fakePricingFetcher: PricingFetcher = {
@@ -56,7 +61,7 @@ export function cookieHeader(cookies: Array<{ name: string; value: string }>): s
   return cookies.map(c => `${c.name}=${encodeURIComponent(c.value)}`).join('; ')
 }
 
-export function buildTestApp(opts: { claims?: Claims } = {}): ReturnType<typeof buildApp> {
+export async function buildTestApp(opts: { claims?: Claims; withDir?: boolean } = {}): Promise<any> {
   const { dir, environmentsFile } = makeTempEnv()
   const deps: AppDeps = {
     sessionSecret: 'k'.repeat(32),
@@ -71,6 +76,8 @@ export function buildTestApp(opts: { claims?: Claims } = {}): ReturnType<typeof 
       vault: new ReferenceKeyBackend('vault', new MemoryClient()),
     }),
     pricingFetcher: fakePricingFetcher,
+    sidecar: fakeSidecar,
   }
-  return buildApp(deps)
+  const app = await buildApp(deps)
+  return opts.withDir ? { app, dir } : app
 }
