@@ -11,6 +11,7 @@ import { registerConfigRoutes } from './routes/config-routes.js'
 import { registerByokRoutes } from './routes/byok-routes.js'
 import { registerPricingRoutes } from './routes/pricing-routes.js'
 import { registerCandidatesRoutes } from './routes/candidates-routes.js'
+import { registerAuditRoutes } from './routes/audit-routes.js'
 import type { SessionUser } from './types.js'
 
 export interface AppDeps {
@@ -47,6 +48,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(registerByokRoutes)
   await app.register(registerPricingRoutes)
   await app.register(registerCandidatesRoutes)
+  await app.register(registerAuditRoutes)
   return app
 }
 
