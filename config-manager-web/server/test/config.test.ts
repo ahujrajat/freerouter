@@ -29,3 +29,25 @@ describe('loadServerConfig', () => {
     expect(() => loadServerConfig({ ...base, SESSION_SECRET: 'short' })).toThrow(/SESSION_SECRET/)
   })
 })
+
+describe('loadServerConfig – BYOK', () => {
+  const base = {
+    OIDC_ISSUER: 'https://idp.example.com',
+    OIDC_CLIENT_ID: 'client',
+    OIDC_CLIENT_SECRET: 'secret',
+    OIDC_REDIRECT_URI: 'https://app.example.com/auth/callback',
+    SESSION_SECRET: 'x'.repeat(32),
+    ENVIRONMENTS_FILE: '/etc/fr/environments.json',
+    AUDIT_LOG_FILE: '/var/log/fr-admin-audit.jsonl',
+  }
+
+  it('parses BYOK_MASTER_KEY when present', () => {
+    const cfg = loadServerConfig({ ...base, BYOK_MASTER_KEY: 'my-master-key' })
+    expect(cfg.byokMasterKey).toBe('my-master-key')
+  })
+
+  it('leaves byokMasterKey undefined when BYOK_MASTER_KEY is absent', () => {
+    const cfg = loadServerConfig(base)
+    expect(cfg.byokMasterKey).toBeUndefined()
+  })
+})

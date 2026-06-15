@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import type { Environment, EnvironmentPaths } from './types.js'
 
 const REQUIRED_PATHS: (keyof EnvironmentPaths)[] = [
-  'config', 'rules', 'env', 'pricing', 'optimizedStore', 'candidates',
+  'config', 'rules', 'env', 'pricing', 'optimizedStore', 'candidates', 'byok',
 ]
 
 export class EnvironmentRegistry {

@@ -15,6 +15,7 @@ export interface ServerConfig {
   oidc: OidcConfig
   environmentsFile: string
   auditLogFile: string
+  byokMasterKey?: string
 }
 
 export interface SessionUser {
@@ -30,6 +31,7 @@ export interface EnvironmentPaths {
   pricing: string
   optimizedStore: string
   candidates: string
+  byok: string
 }
 
 export interface Environment {

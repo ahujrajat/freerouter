@@ -29,5 +29,6 @@ export function loadServerConfig(env: Env = process.env): ServerConfig {
     },
     environmentsFile: required(env, 'ENVIRONMENTS_FILE'),
     auditLogFile: required(env, 'AUDIT_LOG_FILE'),
+    ...(env.BYOK_MASTER_KEY !== undefined && { byokMasterKey: env.BYOK_MASTER_KEY }),
   }
 }

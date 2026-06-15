@@ -15,7 +15,7 @@ describe('EnvironmentRegistry', () => {
 
   const sample = [{
     id: 'dev', label: 'Development',
-    paths: { config: '/c.json', rules: '/r.json', env: '/.env', pricing: '/p.json', optimizedStore: '/o.json', candidates: '/cand.json' },
+    paths: { config: '/c.json', rules: '/r.json', env: '/.env', pricing: '/p.json', optimizedStore: '/o.json', candidates: '/cand.json', byok: '/byok.json' },
   }]
 
   it('loads environments and looks them up by id', () => {
