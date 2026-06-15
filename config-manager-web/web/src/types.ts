@@ -9,3 +9,7 @@ export interface CandidateRow {
   fingerprint: string; model: string; count: number
   estPredictedSavingsUsd: number; status: string
 }
+
+export interface AuditRow {
+  timestamp: number; subject: string; environment: string; action: string; target: string
+}
