@@ -12,7 +12,7 @@ it('shows all section nav items and switches to Rate Limit', async () => {
     return new Response('{}', { status: 200 })
   }))
   render(<AppShell me={{ subject: 'u', name: 'Ada', groups: ['fr-admins'] }} />)
-  for (const label of ['General', 'Providers', 'Rate Limit', 'Budgets', 'Rules', 'Pricing Overrides', 'Optimization', 'Env Vars', 'BYOK Keys', 'Candidates', 'Audit']) {
+  for (const label of ['General', 'Providers', 'Rate Limit', 'Budgets', 'Rules', 'Pricing Overrides', 'Optimization', 'Env Vars', 'BYOK Keys', 'Candidates', 'Audit', 'Reporting']) {
     expect(await screen.findByRole('link', { name: label })).toBeInTheDocument()
   }
   await userEvent.click(screen.getByRole('link', { name: 'Rate Limit' }))

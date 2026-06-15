@@ -13,3 +13,17 @@ export interface CandidateRow {
 export interface AuditRow {
   timestamp: number; subject: string; environment: string; action: string; target: string; description?: string
 }
+
+export interface ReportBucket { key: string; costUsd: number; requests: number; tokens: number }
+export interface SpendReport {
+  configured: boolean
+  totals: { costUsd: number; requests: number; tokens: number }
+  range: { from: number | null; to: number | null }
+  burnRateUsdPerDay: number
+  projectedMonthlyUsd: number
+  byProvider: ReportBucket[]
+  byModel: ReportBucket[]
+  byUser: ReportBucket[]
+  byTeam: ReportBucket[]
+  byDepartment: ReportBucket[]
+}

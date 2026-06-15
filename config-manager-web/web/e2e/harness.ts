@@ -29,11 +29,20 @@ export async function startHarness(port: number): Promise<{ close: () => Promise
     config: join(dir, 'config.json'), rules: join(dir, 'rules.json'), env: join(dir, '.env'),
     pricing: join(dir, 'pricing.json'), optimizedStore: join(dir, 'opt.json'),
     candidates: join(dir, 'cand.json'), byok: join(dir, 'byok.json'),
+    spend: join(dir, 'spend.jsonl'),
   }
   const envFile = join(dir, 'environments.json')
   writeFileSync(envFile, JSON.stringify([{ id: 'dev', label: 'Development', paths }]))
   // Seed a candidate so the Candidates e2e has a row to optimize.
   writeFileSync(paths.candidates, JSON.stringify([{ fingerprint: 'eh:gpt-4o:ab', simhash: '00000000000000ab', model: 'gpt-4o', count: 7, totalCostUsd: 0.3, lastSeen: 1, estPredictedSavingsUsd: 0.06, estBreakEvenReqs: 5, sampleClassSignature: 'eh:gpt-4o:ab', status: 'observed' }]))
+  // Seed spend records so the Reporting e2e has data to display.
+  const now = Date.now()
+  const spendRecords = [
+    { userId: 'alice', teamId: 'eng', provider: 'openai', model: 'gpt-4o', costUsd: 0.05, tokens: { totalTokens: 2000 }, timestamp: now - 3600000 },
+    { userId: 'bob', teamId: 'eng', provider: 'anthropic', model: 'claude-3-5-sonnet', costUsd: 0.08, tokens: { totalTokens: 3500 }, timestamp: now - 7200000 },
+    { userId: 'alice', teamId: 'design', provider: 'openai', model: 'gpt-4o-mini', costUsd: 0.02, tokens: { totalTokens: 800 }, timestamp: now - 10800000 },
+  ]
+  writeFileSync(paths.spend, spendRecords.map(r => JSON.stringify(r)).join('\n'))
 
   const HERE = dirname(fileURLToPath(import.meta.url))
   const webDist = resolve(HERE, '..', 'dist')

@@ -46,3 +46,13 @@ test('optimizes a candidate and the status flips to optimized', async ({ page })
   await page.getByRole('button', { name: 'Optimize' }).click()
   await expect(page.getByText('optimized', { exact: true })).toBeVisible()
 })
+
+test('Reporting shows spend totals and provider breakdown', async ({ page }) => {
+  await signIn(page)
+  await page.getByRole('link', { name: 'Reporting' }).click()
+  await expect(page.getByRole('heading', { name: 'Reporting' })).toBeVisible()
+  // A provider row from seeded data
+  await expect(page.getByText('openai')).toBeVisible()
+  // A dollar total is shown
+  await expect(page.locator('.stat__value').filter({ hasText: /^\$/ }).first()).toBeVisible()
+})
