@@ -9,6 +9,7 @@ import type { AuditLog } from './store/audit-log.js'
 import { registerAuthRoutes } from './routes/auth-routes.js'
 import { registerConfigRoutes } from './routes/config-routes.js'
 import { registerByokRoutes } from './routes/byok-routes.js'
+import { registerPricingRoutes } from './routes/pricing-routes.js'
 import type { SessionUser } from './types.js'
 
 export interface AppDeps {
@@ -20,6 +21,7 @@ export interface AppDeps {
   redirectUri: string
   afterLoginRedirect: string
   keyBackends: import('./byok/registry.js').KeyBackendRegistry
+  pricingFetcher: import('./pricing/pricing-fetcher.js').PricingFetcher
 }
 
 // Derive a 32-byte secure-session key deterministically from the secret.
@@ -41,6 +43,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(registerAuthRoutes)
   await app.register(registerConfigRoutes)
   await app.register(registerByokRoutes)
+  await app.register(registerPricingRoutes)
   return app
 }
 

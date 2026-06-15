@@ -10,6 +10,8 @@ import { LocalKeyBackend } from './byok/local-backend.js'
 import { ReferenceKeyBackend } from './byok/reference-backend.js'
 import { VaultClient } from './byok/clients/vault-client.js'
 import type { BackendName, KeyBackend } from './byok/types.js'
+import { LibraryPricingFetcher } from './pricing/pricing-fetcher.js'
+import { liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
 
 async function main(): Promise<void> {
   const cfg = loadServerConfig()
@@ -26,12 +28,18 @@ async function main(): Promise<void> {
   }
   const keyBackends = new KeyBackendRegistry(backends)
 
+  const pricingFetcher = new LibraryPricingFetcher({
+    litellm: () => liteLLMPricingSource(),
+    openrouter: () => openRouterPricingSource(),
+  })
+
   const app = await buildApp({
     sessionSecret: cfg.sessionSecret,
     oidc, environments, roles, audit,
     redirectUri: cfg.oidc.redirectUri,
     afterLoginRedirect: '/',
     keyBackends,
+    pricingFetcher,
   })
   await app.listen({ host: '0.0.0.0', port: cfg.port })
   // eslint-disable-next-line no-console

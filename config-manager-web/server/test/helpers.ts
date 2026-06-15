@@ -10,11 +10,21 @@ import { KeyBackendRegistry } from '../src/byok/registry.js'
 import { LocalKeyBackend } from '../src/byok/local-backend.js'
 import { ReferenceKeyBackend } from '../src/byok/reference-backend.js'
 import type { SecretManagerClient } from '../src/byok/types.js'
+import type { PricingFetcher } from '../src/pricing/pricing-fetcher.js'
 
 class MemoryClient implements SecretManagerClient {
   store: Record<string, string> = {}
   async writeSecret(ref: string, secret: string) { this.store[ref] = secret }
   async secretExists(ref: string) { return ref in this.store }
+}
+
+const fakePricingFetcher: PricingFetcher = {
+  async fetch() {
+    return {
+      openai: { 'gpt-4o': { input: 2.5, output: 10 } },
+      google: { 'gemini-2.5-flash': { input: 0.075, output: 0.3 } },
+    }
+  },
 }
 
 export function makeTempEnv(): { dir: string; environmentsFile: string } {
@@ -60,6 +70,7 @@ export function buildTestApp(opts: { claims?: Claims } = {}): ReturnType<typeof 
       local: new LocalKeyBackend('a'.repeat(64)),
       vault: new ReferenceKeyBackend('vault', new MemoryClient()),
     }),
+    pricingFetcher: fakePricingFetcher,
   }
   return buildApp(deps)
 }
