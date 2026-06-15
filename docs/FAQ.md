@@ -11,7 +11,7 @@
 5. [Deployment Guide with Examples](#5-deployment-guide-with-examples)
 6. [Enterprise Use Cases](#6-enterprise-use-cases)
 7. [Troubleshooting](#7-troubleshooting)
-8. [Optional Configuration Manager (GUI)](#8-optional-configuration-manager-gui)
+8. [Optional Configuration Manager (Web)](#8-optional-configuration-manager-gui)
 9. [Appendix A — Security Feature Reference](#9-appendix-a--security-feature-reference)
 10. [Appendix B — Prompt-Injection Pattern Catalogue](#10-appendix-b--prompt-injection-pattern-catalogue)
 
@@ -178,7 +178,7 @@ The `RulesEngine` lets the admin express *value-based* directives that override 
 | OpenAI-compatible middleware | `createMiddleware(router)` wraps FreeRouter in an Express/Fastify handler that speaks the OpenAI Chat API wire format. |
 | Config file | `FreeRouter.fromFile('./freerouter.config.json')` accepts JSON, YAML, or TOML. |
 | CLI | `freerouter validate-config`, `list-providers`, `rotate-key` for operational management. |
-| Optional GUI configuration manager | Standalone Python desktop app (Tkinter, stdlib-only) at [`config-manager/`](../config-manager/). Key-protected, edits config, rules, and `.env` files atomically. Excluded from the npm package — see [Section 8](#8-optional-configuration-manager-gui). |
+| Optional web configuration manager | Standalone web app (Node/TS + Fastify API, React/Vite UI) at [`config-manager-web/`](../config-manager-web/). OIDC SSO + RBAC, multi-environment, optimistic-locked editing, write-only BYOK, pricing fetch, candidates, audit. Excluded from the npm package — see [Section 8](#8-optional-configuration-manager-gui). |
 
 ---
 
@@ -764,162 +764,99 @@ The model was blocked via `router.blockModel()` or `router.removeModel()`. Check
 
 `FileSpendStore` is single-process only — each process maintains its own in-memory state and writes its own file. In multi-process deployments you need a shared `SpendStore` backed by Redis or a database. Implement the two-method `SpendStore` interface against your store of choice.
 
-### Configuration Manager pricing fetch fails with `CERTIFICATE_VERIFY_FAILED`
+### Configuration Manager pricing fetch fails with a TLS error
 
-Your Python install can't find a CA bundle to verify the server's certificate. This is common with non-`python.org` Python builds (uv, conda, pyenv, Homebrew on macOS) which often ship without a usable CA store.
+The `config-manager-web` pricing fetch uses Node's built-in `https` module, which relies on the system CA store. If you see a certificate error:
 
-**Fix (recommended):** install `certifi` for the *same* Python interpreter the GUI runs on — the tool auto-detects it on the next fetch with no further config:
-
-```bash
-python3 -m pip install --upgrade certifi
-```
-
-Verify the install reached the right interpreter with `python3 -c "import certifi; print(certifi.where())"`.
-
-**`python.org` macOS Python only:** running `/Applications/Python 3.x/Install Certificates.command` updates that specific install's CA store. It does **not** help uv / conda / pyenv / Homebrew Pythons — for those, use `pip install certifi`.
-
-**Bypass (use sparingly):** the Fetch dialog has a *Skip TLS verification (insecure — session only)* checkbox for environments behind a corporate MITM proxy or self-signed internal manifest. The choice is session-only — never persisted — and toggling it on shows a confirmation dialog explaining the trust trade-off. Don't use this against public endpoints.
+- Ensure the Node.js process trusts the CA that signed the pricing endpoint's certificate. For corporate MITM proxies, set `NODE_EXTRA_CA_CERTS=/path/to/ca.crt` in the environment.
+- For self-signed internal manifests, you can set `NODE_TLS_REJECT_UNAUTHORIZED=0` (insecure — use only in isolated internal environments).
+- If you are fetching from LiteLLM or OpenRouter over the public internet, a TLS error usually means a system CA store configuration issue; update the CA bundle for your Node.js install.
 
 ---
 
-## 8. Optional Configuration Manager (GUI)
+## 8. Optional Configuration Manager (Web)
 
 ### What is the Configuration Manager?
 
-A **fully optional, standalone desktop application** — written in Python with Tkinter — that lets an admin edit every piece of FreeRouter configuration without hand-editing JSON. It lives in [`config-manager/`](../config-manager/) at the repo root, completely outside `src/` and `dist/`. Because `package.json` publishes only the `dist/` directory, the manager never ships with the npm package; it is a tool for the operator's machine, not a runtime dependency of the router.
+A **fully optional, standalone web application** — Node/TypeScript with a Fastify API and React/Vite UI — that lets admins edit every piece of FreeRouter configuration without hand-editing JSON. It lives in [`config-manager-web/`](../config-manager-web/) at the repo root, completely outside `src/` and `dist/`. Because `package.json` publishes only the `dist/` directory, the manager never ships with the npm package; it is a tool for the operator's deployment, not a runtime dependency of the router.
 
 ### Why is it separate from the core router?
 
 Three reasons:
 
-- **Zero coupling.** The router has no awareness of the manager and works identically whether the manager exists or not. Deleting the `config-manager/` folder breaks nothing.
-- **Different language, different runtime.** Python + Tkinter is a far better fit for a local desktop GUI than a Node web stack, and keeps FreeRouter's "zero runtime dependencies" promise intact for the core library.
-- **Operator surface is local.** Editing live config is an admin-machine activity, not a service-fleet activity. Keeping the tool local-only — no HTTP server, no listening socket — eliminates an entire class of production attack surface.
+- **Zero coupling.** The router has no awareness of the manager and works identically whether the manager exists or not. Deleting the `config-manager-web/` folder breaks nothing.
+- **Different deployment surface.** The web manager is a deployed, multi-user service with OIDC SSO and RBAC — a better fit for ops teams than a single-admin local desktop tool, and keeps FreeRouter's "zero runtime dependencies" promise intact for the core library.
+- **Excluded from dist.** The `package.json` `files` allowlist publishes only `dist/`; the web manager directory is never bundled into the npm package.
 
 ### How is admin access controlled?
 
-Key-based, single-admin auth:
+OIDC SSO with role-based access control:
 
-- On first launch, the manager generates a 32-byte random admin key with `secrets.token_urlsafe`. Only its **PBKDF2-HMAC-SHA256** digest (with a per-install random salt, 200 000 iterations) is persisted, in `~/.freerouter-admin/key.hash`. The plaintext key is printed once and never written anywhere.
-- On subsequent launches, the operator enters the key via `getpass`. Comparison is constant-time (`hmac.compare_digest`). A wrong key exits the process with code 1 — the GUI never opens.
-- Use `--reset-key` to delete the digest and regenerate; `--print-key-path` reveals where the digest lives.
+- The server integrates with any OIDC-compliant IdP (Okta, Auth0, Azure AD, Google, etc.) via `OIDC_*` env vars.
+- Group membership maps to roles: `fr-admins` → `admin`, `fr-viewers` → `viewer`. Only `admin`-role sessions can write config.
+- Sessions are stored in an httpOnly, SameSite=Lax cookie signed with a `SESSION_SECRET`.
 
-There is no SSO and no multi-admin role model. The manager assumes a single trusted operator.
+### What can I edit through the web UI?
 
-### What can I edit through the GUI?
+Everything that lives in `freerouter.config.json`, plus BYOK keys, pricing, optimization candidates, and an audit log:
 
-Everything that lives in `freerouter.config.json`, plus the FileRulesSource rules file and a project-local `.env`:
-
-| Tab | Fields |
+| Section | Fields |
 |---|---|
-| **General** | `defaultProvider` (dropdown of registered providers), `defaultModel` (editable dropdown sourced from models seen in your config + last-fetched manifest), `masterKey` (64-char hex), `maxInputLength`, `keyExpiryMs`, `promptInjectionGuard`, `requestSigning` |
+| **General** | `defaultProvider`, `defaultModel`, `masterKey`, `maxInputLength`, `keyExpiryMs`, `promptInjectionGuard`, `requestSigning` |
 | **Providers** | Per-provider `enabled` toggle and `routingPrefixes`, `blockedProviders`, `allowedModels` |
 | **Rate Limit** | `requestsPerMinute`, `tokensPerMinute`, `burstAllowance` |
-| **Budgets** | Full add / edit / delete over `BudgetPolicy[]` — scope (`global`/`org`/`department`/`team`/`user`), window, max spend / tokens / requests, `onLimitReached`, alert thresholds, priority. ID fields (`orgId`, `teamId`, etc.) use editable dropdowns sourced from values already used in your config |
-| **Rules** | Full add / edit / delete over `Rule[]` — match predicates (`userId`, `orgId`, `teamId`, `departmentId`, `modelPattern`, request priority), pin / strategy / block actions, priority |
-| **Pricing Overrides** | Per-model `input` / `output` / `cachedInput` (USD per 1M tokens). Includes a **Fetch models & pricing…** button with one-click presets for LiteLLM, OpenRouter, or a custom URL — selected rows can be imported as overrides; fetched models also flow into the dropdowns elsewhere in the GUI |
-| **BYOK Keys** | Full add / edit / delete over per-`(userId, provider)` API keys. Persisted to `~/.freerouter-admin/byok-keys.json` (mode `0600`) — kept out of `freerouter.config.json` and `.env` so secrets never enter source control. See [Section 8 → BYOK Keys](#how-do-i-provide-multiple-vendor-byok-keys-through-the-gui) below |
-| **Audit** | Toggle `audit.enabled` |
-| **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN` — written to a `.env` file in CWD |
-
-Audit sinks (file/HTTP/SIEM) are wired in TypeScript code at runtime, so the GUI only toggles the `enabled` flag — the sink itself is set when the `FreeRouter` instance is constructed.
+| **Budgets** | Full CRUD over `BudgetPolicy[]` — scope, window, caps, `onLimitReached`, alert thresholds |
+| **Rules** | Full CRUD over `Rule[]` — match predicates, pin / strategy / block actions, priority |
+| **Pricing Overrides** | Per-model `input` / `output` / `cachedInput` (USD per 1M tokens). Includes a fetch dialog with LiteLLM / OpenRouter / custom URL presets |
+| **BYOK Keys** | Write-only key management per `(userId, provider)`. The secret is never returned after submission; stored via the configured key backend (local AES-256-GCM, or Vault/AWS/Azure/GCP) |
+| **Optimization** | GEPA pipeline opt-ins: `telemetryExport`, `shadowRouter`, `promptOptimization` settings |
+| **Candidates** | Auto-optimization candidates panel — view ROI-ranked candidates, trigger optimization, track status |
+| **Audit** | Toggle `audit.enabled`; view the audit log |
+| **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN` |
 
 ### How safe are the writes?
 
-Every save runs the **same structural validator** the runtime uses (a Python mirror of [`src/config-validator.ts`](../src/config-validator.ts)) plus a parallel rules validator. Errors block the save and surface as a dialog listing every problem; warnings are surfaced but do not block.
-
-File writes are atomic on every supported OS:
-
-- A sibling `*.tmp` file is written in the same directory as the target (so the final rename is a same-filesystem operation).
-- The temp file is `fsync`'d before rename (errors on Windows network shares are tolerated, since power-durability isn't worth aborting the save).
-- The rename uses `os.replace`, which Python documents as atomic on Linux, macOS, and Windows since 3.3.
-
-Combined with the validator gate, a failed save never produces a half-written file.
-
-### Does it work on Windows?
-
-Yes. All file paths flow through `pathlib.Path`, which accepts both forward and backslashes on Windows and resolves relative paths against the current working directory on every OS. The admin-key file lands at `%USERPROFILE%\.freerouter-admin\key.hash` on Windows and `$HOME/.freerouter-admin/key.hash` on Linux/macOS.
-
-A few cross-platform considerations the tool already handles:
-
-- `os.fsync` failures on some Windows filesystems are caught and ignored.
-- `os.chmod(0o600)` on the key-hash file is best-effort (Windows only honours the user-write bit).
-- All written JSON / `.env` files use `\n` line endings explicitly to keep the same byte content across hosts (committable to git without CRLF noise).
+Every save uses **optimistic locking** (ETag + `If-Match`) to prevent lost-update races when multiple admins edit concurrently. The server runs the same structural validator the runtime uses before writing; bad inputs are rejected with a clear error before any file is touched. File writes use a sibling `.tmp` + atomic rename so a failed save never produces a half-written file.
 
 ### How do I run it?
 
 ```bash
-# From the repo root, default file paths
-python3 config-manager/freerouter_admin.py
-
-# Explicit relative paths (any OS)
-python3 config-manager/freerouter_admin.py \
-  --config ./freerouter.config.json \
-  --rules  ./freerouter.rules.json \
-  --env    ./.env
-
-# Key management
-python3 config-manager/freerouter_admin.py --reset-key
-python3 config-manager/freerouter_admin.py --print-key-path
+cd config-manager-web
+npm install
+npm run build              # build the SPA (web/dist) and the server
+# configure OIDC + environments via env vars (see config-manager-web/README.md), then:
+WEB_DIST_DIR=./web/dist npm run --workspace server start
 ```
 
-If Tkinter is missing on a Linux host, install it via the distro's package (`apt install python3-tk` or equivalent). On macOS, the `python.org` build or `brew install python-tk` provides it. On Windows, the official Python installer includes Tkinter by default.
+See `config-manager-web/README.md` for the full list of environment variables (`OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `SESSION_SECRET`, `ENVIRONMENTS_FILE`, `WEB_DIST_DIR`, etc.).
 
 ### Does saving rules require a router restart?
 
-No. When the router is configured with `rulesRefresh: { source: new FileRulesSource('./freerouter.rules.json'), intervalMs: 60_000 }`, the next refresh tick after the GUI saves the file picks up the change automatically. The same is true for `FilePricingSource` if the rules file path you point the GUI at matches the file the router watches.
+No. When the router is configured with `rulesRefresh: { source: new FileRulesSource('./freerouter.rules.json'), intervalMs: 60_000 }`, the next refresh tick after the web UI saves the file picks up the change automatically. The same is true for `FilePricingSource`.
 
-For the main `freerouter.config.json`, structural changes (new providers, changed budgets, etc.) still require a restart — same as if you'd hand-edited the file. The GUI is a *safer way to edit*, not a runtime injection mechanism.
+For the main `freerouter.config.json`, structural changes (new providers, changed budgets, etc.) still require a restart — same as if you'd hand-edited the file. The web UI is a *safer way to edit*, not a runtime injection mechanism.
 
 ### Can I keep using JSON / YAML / TOML files directly?
 
 Yes. The Configuration Manager is purely a convenience for ops teams; it reads and writes the exact same JSON file the runtime consumes. Code-, JSON-, YAML-, and TOML-based configuration continues to work unchanged whether or not the manager is ever launched.
 
-### How do I provide multiple vendor BYOK keys through the GUI?
+### How do I provide multiple vendor BYOK keys through the web UI?
 
-The **BYOK Keys** tab manages per-`(userId, provider)` API keys with full add / edit / delete. Fields:
+The **BYOK Keys** section manages per-`(userId, provider)` API keys. Keys are accepted write-only — the secret is never returned after submission (the UI shows only the last 4 characters). The key is stored via the configured key backend (local AES-256-GCM-encrypted file, or an external Vault/AWS Secrets Manager/Azure Key Vault/GCP Secret Manager backend).
 
-- **userId** — editable dropdown that auto-suggests user IDs already referenced anywhere in your config (budgets, rules).
-- **provider** — readonly dropdown of FreeRouter's registered providers (`google`, `openai`, `anthropic`, `mistral`, `groq`).
-- **API key** — masked entry with a per-row reveal toggle. Stored values are masked by default in the table (last 4 characters only); a "Toggle reveal" button shows them in full.
+**Runtime hookup.** The FreeRouter runtime expects keys via `router.setKey(userId, provider, key)` at startup. Your bootstrap code can call `router.setKey()` from whatever source you use; the web manager's BYOK storage is a managed staging area for the operator that is separate from the router's in-memory key store.
 
-Editing an entry is treated as **rotation**: the previously stored secret is never re-displayed; the operator types the replacement key explicitly.
+### How do I fetch live model pricing from inside the web UI?
 
-**Storage and trust model.** Keys are persisted to `~/.freerouter-admin/byok-keys.json` (mode `0600`, in the operator's per-user state directory — same trust boundary as the admin-key hash). They are deliberately *not* written to `freerouter.config.json` or `.env`, so they don't end up in source control. The format:
-
-```json
-{
-  "version": 1,
-  "keys": [
-    { "userId": "alice", "provider": "openai",    "apiKey": "sk-…", "createdAt": 1730000000000 },
-    { "userId": "alice", "provider": "anthropic", "apiKey": "sk-ant-…", "createdAt": 1730000005000 }
-  ]
-}
-```
-
-**Why plaintext-on-disk and not encrypted?** The runtime's `KeyManager` uses Node's AES-256-GCM (`crypto.createCipheriv`). Python's standard library has no AES-GCM (it lives in `pyca/cryptography`, a third-party package), and the Configuration Manager is intentionally stdlib-only. The `0600` file in the operator's home directory matches the trust model `.env` and the admin-key hash already rely on. If your threat model demands at-rest encryption for this file, encrypt it at the filesystem level (FileVault, LUKS, BitLocker) or run the GUI on a workstation with full-disk encryption.
-
-**Runtime hookup.** The FreeRouter runtime currently expects keys via `router.setKey(userId, provider, key)` at runtime — it has no built-in `FileKeyStore` adapter that loads `byok-keys.json` automatically. Until that adapter ships, the BYOK Keys tab is a managed staging area: have your runtime bootstrap read the file at startup and call `router.setKey()` for each entry. The tab's help banner makes this requirement explicit so it isn't mistaken for an end-to-end auto-load feature.
-
-### How do I fetch live model pricing from inside the GUI?
-
-The **Pricing Overrides** tab has a **Fetch models & pricing…** button with three source presets:
+The **Pricing Overrides** section has a **Fetch pricing…** button with three source presets:
 
 | Source | URL | Auth | Notes |
 |---|---|---|---|
 | LiteLLM | community-maintained `model_prices_and_context_window.json` on GitHub | none | Tracks ~hundreds of models across all major vendors. Updated frequently. |
-| OpenRouter API | `https://openrouter.ai/api/v1/models` | none for the public catalog | Live aggregator. Synthetic `openrouter` provider used for slash-less ids. |
-| Custom URL | (yours) | optional bearer token (defaults to `.env`'s `PRICING_TOKEN`) | Self-hosted JSON in the FreeRouter manifest shape. |
+| OpenRouter API | `https://openrouter.ai/api/v1/models` | none for the public catalog | Live aggregator. |
+| Custom URL | (yours) | optional bearer token | Self-hosted JSON in the FreeRouter manifest shape. |
 
-Behaviour:
-
-- Picking a preset auto-fills the URL; switching back to "Custom" restores whatever URL you last used in custom mode.
-- Each preset has a vendor-specific transformer that normalises the response into the FreeRouter manifest shape (including unit conversion — both LiteLLM and OpenRouter quote $/token; the transformers scale to $/1M to match FreeRouter's convention).
-- The fetched manifest is grouped by provider in a tree; multi-select rows and click **Import selected** to add them as overrides on the current config.
-- Fetched model IDs flow into the editable dropdowns elsewhere in the GUI (default model, pin model, fallback model, etc.).
-- The most recently fetched manifest is cached in `~/.freerouter-admin/settings.json` so dropdowns stay populated across sessions, even offline.
-
-**Why no per-vendor URL preset (Google / Anthropic / OpenAI)?** Vendors don't publish public JSON pricing endpoints — their pricing pages are HTML. Pasting one of those URLs would return HTML and the fetch would fail with a "this is a docs page, not a manifest" error. LiteLLM and OpenRouter are the two practical "live" sources, and both track vendor changes for you. The same factory functions (`liteLLMPricingSource()` / `openRouterPricingSource()`) are also available in the runtime for `pricingRefresh.source`.
+Each preset uses the same `transformLiteLLM` / `transformOpenRouter` functions from `src/finops/pricing-source.ts` that the runtime's `liteLLMPricingSource()` / `openRouterPricingSource()` factories use — there is only one implementation, shared between the web manager and the core router.
 
 ---
 
@@ -964,9 +901,9 @@ Cross-cutting summary of every built-in security control. Each row points at the
 | Default Chinese-provider deny-list | `providers/registry.ts` blocks DeepSeek, Qwen, Zhipu, etc. by default policy; cannot be re-registered without explicit override. |
 | Structured audit trail | Every `key:set`, `key:rotated`, `key:deleted`, `request:sent`, `request:blocked`, `policy:violated`, `model:added`, `model:removed`, `rule:matched` event produces a typed `AuditEntry`. Plug any sink via `AuditSink`. |
 | Config validator | `validateConfig()` runs on startup — rejects malformed budgets, invalid scope types, non-hex master keys, etc. before the router accepts any request. |
-| Configuration Manager auth | Local Tkinter app uses PBKDF2-HMAC-SHA256 (200 000 iterations, per-install salt) on a random 32-byte key. Comparison is constant-time (`hmac.compare_digest`). |
-| BYOK keystore file mode | Config Manager writes `~/.freerouter-admin/byok-keys.json` with mode `0600` — same trust boundary as the admin-key hash. Kept out of `.env` and `freerouter.config.json`. |
-| TLS verification (Config Manager) | Pricing fetcher verifies TLS by default; auto-uses `certifi`'s CA bundle if installed. The "Skip TLS verification" toggle is session-only and gated behind a confirmation dialog. |
+| Configuration Manager auth | Web app (`config-manager-web`) uses OIDC SSO with role-based access control (`fr-admins` / `fr-viewers` groups). Session via httpOnly cookie; all write endpoints require the `admin` role. |
+| BYOK keystore security | Config Manager (`config-manager-web`) accepts keys write-only — the secret is never returned after submission. Stored via the configured key backend (local AES-256-GCM, or Vault/AWS/Azure/GCP). |
+| TLS verification (Config Manager) | Pricing fetch in `config-manager-web` delegates to the server's `HttpPricingSource` (Node `https` module with default TLS verification). |
 
 ---
 

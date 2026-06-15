@@ -109,9 +109,9 @@ export interface PromptOptimizationConfig {
  */
 export interface AutoOptimizationConfig {
   enabled: boolean
-  /** Where ROI-ranked candidates are written (read by the config-manager GUI). */
+  /** Where ROI-ranked candidates are written (read by the config-manager-web UI). */
   candidatesPath: string
-  /** Where the GUI writes optimized templates (read/watched by the router). */
+  /** Where the config-manager-web UI writes optimized templates (read/watched by the router). */
   optimizedStorePath: string
   /** Reference capture dir; shared with the GEPA sidecar. */
   referencesDir: string

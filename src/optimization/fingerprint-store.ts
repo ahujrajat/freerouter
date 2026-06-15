@@ -66,7 +66,7 @@ export class FingerprintStore {
   }
 
   /** Merge freshly-computed candidates into the index, reconcile on-disk status
-   *  changes from external writers (e.g. the config-manager GUI), and persist
+   *  changes from external writers (e.g. the config-manager-web UI), and persist
    *  (throttled by persistIntervalMs when set). */
   refreshCandidates(fresh: CandidateEntry[]): void {
     this.reconcileStatusesFromDisk()
@@ -93,7 +93,7 @@ export class FingerprintStore {
   }
 
   /** Adopt status changes written to the candidates file by another writer
-   *  (e.g. the config-manager GUI) without losing our fresher counts. */
+   *  (e.g. the config-manager-web UI) without losing our fresher counts. */
   private reconcileStatusesFromDisk(): void {
     const path = this.cfg.candidatesPath
     if (!existsSync(path)) return

@@ -138,9 +138,10 @@ export class StaticPricingSource implements PricingSource {
 
 // ── Transformers for common community formats ────────────────────────────
 //
-// Each named transformer below has a Python mirror in
-// `config-manager/pricing_fetcher.py`. Keep the two implementations in sync —
-// any change to field names, multipliers, or skip rules must land in both.
+// The transformers below are used by the web config manager
+// (`config-manager-web`) for its pricing-fetch feature, as well as by the
+// runtime's `liteLLMPricingSource()` and `openRouterPricingSource()` factories.
+// There is a single implementation — no second copy to keep in sync.
 
 const identityTransform: PricingTransform = raw => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -161,7 +162,7 @@ const identityTransform: PricingTransform = raw => {
  *
  * Source URL: see {@link LITELLM_PRICING_URL}.
  *
- * Mirror of `config-manager/pricing_fetcher.py::_transform_litellm`.
+ * Used by the web config manager (`config-manager-web`) for its pricing-fetch feature.
  */
 export const transformLiteLLM: PricingTransform = raw => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -208,7 +209,7 @@ export const transformLiteLLM: PricingTransform = raw => {
  *
  * Source URL: see {@link OPENROUTER_PRICING_URL}.
  *
- * Mirror of `config-manager/pricing_fetcher.py::_transform_openrouter`.
+ * Used by the web config manager (`config-manager-web`) for its pricing-fetch feature.
  */
 export const transformOpenRouter: PricingTransform = raw => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
