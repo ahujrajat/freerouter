@@ -13,8 +13,24 @@ import type { BackendName, KeyBackend } from './byok/types.js'
 import { LibraryPricingFetcher } from './pricing/pricing-fetcher.js'
 import { HttpSidecarClient } from './optimization/sidecar-client.js'
 import { liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
+import { buildDevDeps } from './dev.js'
 
 async function main(): Promise<void> {
+  // Local dev mode: zero required config, fake auto-login. NEVER for production.
+  if (process.env.FR_ADMIN_DEV === '1') {
+    const { deps, port, webOrigin } = buildDevDeps()
+    const app = await buildApp(deps)
+    await app.listen({ host: '127.0.0.1', port })
+    // eslint-disable-next-line no-console
+    console.log(
+      `[config-manager-web] DEV mode on http://localhost:${port}\n` +
+      `  • auto-login as "Dev Admin" (no IdP); data under ./.dev-data/\n` +
+      `  • open the UI at ${webOrigin} (run \`npm run dev:web\` too), or set ` +
+      `WEB_DIST_DIR + FR_ADMIN_DEV_ORIGIN=http://localhost:${port} to serve the built SPA here`,
+    )
+    return
+  }
+
   const cfg = loadServerConfig()
   const environments = EnvironmentRegistry.load(cfg.environmentsFile)
   const roleMapping = JSON.parse(readFileSync(process.env.ROLE_MAPPING_FILE ?? './role-mapping.json', 'utf-8')) as RoleMapping
