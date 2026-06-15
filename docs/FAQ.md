@@ -805,14 +805,15 @@ Everything that lives in `freerouter.config.json`, plus BYOK keys, pricing, opti
 | **General** | `defaultProvider`, `defaultModel`, `masterKey`, `maxInputLength`, `keyExpiryMs`, `promptInjectionGuard`, `requestSigning` |
 | **Providers** | Per-provider `enabled` toggle and `routingPrefixes`, `blockedProviders`, `allowedModels` |
 | **Rate Limit** | `requestsPerMinute`, `tokensPerMinute`, `burstAllowance` |
-| **Budgets** | Full CRUD over `BudgetPolicy[]` — scope, window, caps, `onLimitReached`, alert thresholds |
-| **Rules** | Full CRUD over `Rule[]` — match predicates, pin / strategy / block actions, priority |
-| **Pricing Overrides** | Per-model `input` / `output` / `cachedInput` (USD per 1M tokens). Includes a **Fetch from source** dialog (LiteLLM / OpenRouter) with a **Select-all** toggle for bulk-applying fetched models |
+| **Budgets** | Full CRUD over `BudgetPolicy[]` — scope, window, caps, `onLimitReached`, alert thresholds. Ids are auto-generated; multi-select delete |
+| **Rules** | Full CRUD over `Rule[]` — match predicates, pin / strategy / block actions, priority. Ids are auto-generated; multi-select delete |
+| **Pricing Overrides** | Per-model `input` / `output` / `cachedInput` (USD per 1M tokens). A **Fetch from source** dialog (LiteLLM / OpenRouter, with **Select-all**), **CSV upload/download** (download the template when empty, else the current overrides), and multi-select delete |
 | **BYOK Keys** | Write-only key management per `(userId, provider)`. The secret is never returned after submission; stored via the configured key backend (local AES-256-GCM, or Vault/AWS/Azure/GCP) |
 | **Optimization** | Per-request `promptOptimization` and proactive `autoOptimization` settings (enable flags, target / fallback models, candidate + optimized-store paths) |
-| **Candidates** | Auto-optimization candidates panel — view ROI-ranked candidates, trigger optimization, track status |
-| **Audit** | Toggle `audit.enabled`; view the audit log |
-| **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN` |
+| **Candidates** | Auto-optimization candidates panel — view ROI-ranked candidates, trigger optimization, multi-select delete, track status |
+| **Audit** | View the admin audit log — each entry shows a descriptive action ("Set BYOK key for …", "Optimized candidate …", etc.) |
+| **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN`; multi-select delete |
+| **Reporting** | Read-only spend dashboard for the environment — totals (cost / requests / tokens), burn-rate and projected 30-day spend, and chargeback breakdowns by provider / model / user / team / department, with an All-time / 7 / 30 / 90-day window. Reads the spend records the runtime persists (telemetry JSONL or a `FileSpendStore` JSON) via the environment's optional `spend` path |
 
 ### How safe are the writes?
 
@@ -866,7 +867,13 @@ The **Pricing Overrides** section has a **Fetch from source** dialog with two so
 | LiteLLM | community-maintained `model_prices_and_context_window.json` on GitHub | none | Tracks ~hundreds of models across all major vendors. Updated frequently. |
 | OpenRouter | `https://openrouter.ai/api/v1/models` | none for the public catalog | Live aggregator. |
 
-The server filters the fetched manifest to the providers enabled in the active environment, then the dialog lists the models with a per-model checkbox plus a **Select all / Deselect all** toggle (and a "N of M selected" count) for bulk apply. Each source uses the same `transformLiteLLM` / `transformOpenRouter` functions from `src/finops/pricing-source.ts` that the runtime's `liteLLMPricingSource()` / `openRouterPricingSource()` factories use — one implementation, shared between the web manager and the core router. The fetch runs **server-side**, so source URLs and TLS handling stay off the browser.
+The server filters the fetched manifest to the providers enabled in the active environment, then the dialog lists the models with a per-model checkbox plus a **Select all / Deselect all** toggle (and a "N of M selected" count) for bulk apply. Each source uses the same `transformLiteLLM` / `transformOpenRouter` functions from `src/finops/pricing-source.ts` that the runtime's `liteLLMPricingSource()` / `openRouterPricingSource()` factories use — one implementation, shared between the web manager and the core router. The fetch runs **server-side**, so source URLs and TLS handling stay off the browser. You can also **upload a CSV** of overrides (columns `model,input,output,cachedInput`) or **download** the current overrides / a template as CSV for editing in a spreadsheet.
+
+### Where is the spend / reporting view?
+
+The **Reporting** section is a read-only spend dashboard, scoped to the selected environment. It shows totals (cost, requests, tokens), a burn-rate and projected 30-day spend, and chargeback breakdowns by provider, model, user, team, and department, with an All-time / 7 / 30 / 90-day window.
+
+It is **separate from the core router's runtime reporting** (`router.getSpend()` / `getForecast()` / `getChargebackReport()` / `metrics()`), which the embedding application calls directly. The web manager has no live connection to a running router; instead the Reporting section reads the **spend records the runtime persists to disk** — a `FileTelemetrySink` JSONL file (one `SpendRecord` per line) or a `FileSpendStore` JSON array. Point the environment's optional `spend` path (in `environments.json`) at that file to enable it; if no `spend` path is set, the section explains that reporting isn't configured for that environment. Aggregation is server-side and read-only — the manager never writes spend data.
 
 ---
 

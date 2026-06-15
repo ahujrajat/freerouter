@@ -19,7 +19,7 @@ It enforces military-grade key isolation, protects against prompt injection, and
 - 🛡️ **Hardened Security** — HMAC-SHA256 request signing, NFKD unicode normalization, and 14+ pattern prompt-injection guard.
 - ⚙️ **Pluggable & Config-Driven** — configure via code, JSON, YAML, or TOML. Unused providers are never instantiated.
 - 📡 **Native Streaming** — full `AsyncGenerator` support for all providers.
-- 🛠️ **Optional Configuration Manager** — standalone web app (Node/TypeScript + Fastify API, React/Vite UI with an Accenture-light theme) for admins to edit config, rules, env vars, and BYOK keys. OIDC SSO, RBAC, multi-environment, optimistic-locked editing, write-only BYOK, live pricing fetch (with select-all), candidates panel, and audit log. Ships a zero-config local dev mode; lives outside the npm package — zero coupling to the core router.
+- 🛠️ **Optional Configuration Manager** — standalone web app (Node/TypeScript + Fastify API, React/Vite UI with an Accenture-light theme) for admins to edit config, rules, env vars, and BYOK keys. OIDC SSO, RBAC, multi-environment, optimistic-locked editing, write-only BYOK, live pricing fetch + CSV import/export, candidates panel, a spend reporting dashboard (chargeback by team/model/user), and an audit log. Ships a zero-config local dev mode; lives outside the npm package — zero coupling to the core router.
 - 🧬 **GEPA Optimization Pipeline (opt-in)** — telemetry export, shadow-router canary, and per-request prompt optimization via the [GEPA `optimize_anything`](https://gepa-ai.github.io/gepa/api/) sidecar. Closed-loop ROI ledger disables loss-making classes automatically; quality gate (LLM-judge, pairwise+swap) blocks regressions before any optimized template is cached.
 
 ### Supported Providers
