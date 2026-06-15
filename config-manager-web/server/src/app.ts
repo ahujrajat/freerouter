@@ -18,6 +18,7 @@ export interface AppDeps {
   audit: AuditLog
   redirectUri: string
   afterLoginRedirect: string
+  keyBackends: import('./byok/registry.js').KeyBackendRegistry
 }
 
 // Derive a 32-byte secure-session key deterministically from the secret.

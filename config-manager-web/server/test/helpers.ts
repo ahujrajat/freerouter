@@ -6,6 +6,8 @@ import { EnvironmentRegistry } from '../src/environments.js'
 import { RoleResolver } from '../src/auth/rbac.js'
 import { AuditLog } from '../src/store/audit-log.js'
 import type { OidcProvider, Claims } from '../src/auth/oidc.js'
+import { KeyBackendRegistry } from '../src/byok/registry.js'
+import { LocalKeyBackend } from '../src/byok/local-backend.js'
 
 export function makeTempEnv(): { dir: string; environmentsFile: string } {
   const dir = mkdtempSync(join(tmpdir(), 'fr-app-'))
@@ -46,6 +48,7 @@ export function buildTestApp(opts: { claims?: Claims } = {}): ReturnType<typeof 
     audit: new AuditLog(join(dir, 'audit.jsonl')),
     redirectUri: 'http://localhost/auth/callback',
     afterLoginRedirect: '/',
+    keyBackends: new KeyBackendRegistry({ local: new LocalKeyBackend('a'.repeat(64)) }),
   }
   return buildApp(deps)
 }
