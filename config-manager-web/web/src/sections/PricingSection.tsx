@@ -61,6 +61,10 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
     setFetchOpen(false)
   }
 
+  const fetchedModels = Object.keys(fetched)
+  const pickedCount = fetchedModels.filter((m) => picked[m] === true).length
+  const allFetchedPicked = fetchedModels.length > 0 && pickedCount === fetchedModels.length
+
   if (cfg.loading) return <div className="card">Loading…</div>
 
   const commit = (next: Overrides) => {
@@ -159,6 +163,21 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
           </select>
         </Field>
         <Button onClick={runFetch}>Fetch</Button>
+        {Object.keys(fetched).length > 0 && (
+          <div className="fetch-toolbar">
+            <Toggle
+              id="pf-select-all"
+              label={allFetchedPicked ? 'Deselect all' : 'Select all'}
+              checked={allFetchedPicked}
+              onChange={(v) => setPicked(v
+                ? Object.fromEntries(Object.keys(fetched).map((m) => [m, true]))
+                : {})}
+            />
+            <span className="fetch-toolbar__count">
+              {pickedCount} of {Object.keys(fetched).length} selected
+            </span>
+          </div>
+        )}
         <div style={{ maxHeight: 240, overflow: 'auto', marginTop: 8 }}>
           {Object.keys(fetched).map((model) => (
             <div key={model} className="field">

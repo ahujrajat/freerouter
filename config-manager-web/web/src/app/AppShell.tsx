@@ -47,16 +47,26 @@ export function AppShell({ me }: { me: MeResponse }) {
   return (
     <div>
       <header className="header">
-        <span className="header__brand">FreeRouter Admin</span>
+        <span className="header__brand">
+          <span className="brand-mark" aria-hidden="true">&gt;</span>
+          FreeRouter <span className="brand-sub">Config Manager</span>
+        </span>
         {envs.length > 0 && <EnvSwitcher envs={envs} value={envId} onChange={setEnvId} />}
         <span className="header__spacer" />
-        <span>{me.name}</span>
-        <a href="/auth/logout">Sign out</a>
+        <span className="header__user">
+          <span className="header__name">{me.name}</span>
+          {env !== undefined && (
+            <span className={`chip ${canWrite ? '' : 'chip--muted'}`}>{env.role}</span>
+          )}
+        </span>
+        <a className="header__signout" href="/auth/logout">Sign out</a>
       </header>
       <div className="layout">
-        <nav className="nav">
+        <nav className="nav" aria-label="Sections">
+          <div className="nav__label">Configuration</div>
           {SECTIONS.map(s => (
             <a key={s.id} className={s.id === section ? 'active' : ''} href="#"
+               aria-current={s.id === section ? 'page' : undefined}
                onClick={(e) => { e.preventDefault(); setSection(s.id) }}>{s.label}</a>
           ))}
         </nav>

@@ -11,7 +11,26 @@ export function AuthGate({ children }: { children: (me: MeResponse) => ReactNode
       .catch((e) => { if (e instanceof ApiError && e.status === 401) window.location.href = '/auth/login' })
       .finally(() => setLoading(false))
   }, [])
-  if (loading) return <div className="card" style={{ margin: 16 }}>Loading…</div>
-  if (me === null) return <div className="card" style={{ margin: 16 }}>Redirecting to sign in…</div>
+  if (loading) {
+    return (
+      <div className="screen">
+        <div className="screen__card">
+          <div className="screen__brand"><span className="brand-mark" aria-hidden="true">&gt;</span> FreeRouter</div>
+          <div className="spinner" role="status" aria-label="Loading" />
+          <div className="screen__muted">Loading your configuration…</div>
+        </div>
+      </div>
+    )
+  }
+  if (me === null) {
+    return (
+      <div className="screen">
+        <div className="screen__card">
+          <div className="screen__brand"><span className="brand-mark" aria-hidden="true">&gt;</span> FreeRouter</div>
+          <div className="screen__muted">Redirecting to sign in…</div>
+        </div>
+      </div>
+    )
+  }
   return <>{children(me)}</>
 }
