@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useConfig } from '../app/useConfig.js'
 import { useRowSelection } from '../app/useRowSelection.js'
+import { nextId } from '../app/ids.js'
 import { Field } from '../components/Field.js'
 import { TextInput } from '../components/TextInput.js'
 import { Button } from '../components/Button.js'
@@ -32,7 +33,7 @@ export function RulesSection({ envId, canWrite }: { envId: string; canWrite: boo
   const onConfirm = () => {
     if (editing === null) return
     const next = [...list]
-    if (editing.index === -1) next.push(editing.draft); else next[editing.index] = editing.draft
+    if (editing.index === -1) next.push({ ...editing.draft, id: nextId(list.map(r => r.id), 'rule') }); else next[editing.index] = editing.draft
     setList(next); setEditing(null)
   }
 
@@ -82,7 +83,6 @@ function RuleForm({ draft, onChange }: { draft: Rule; onChange: (r: Rule) => voi
   }
   return (
     <>
-      <Field label="ID" htmlFor="r-id"><TextInput id="r-id" value={draft.id} onChange={(e) => onChange({ ...draft, id: e.target.value })} /></Field>
       <Field label="Model pattern (glob, optional)" htmlFor="r-mp">
         <TextInput id="r-mp" value={draft.match.modelPattern ?? ''} onChange={(e) => onChange({ ...draft, match: { ...draft.match, modelPattern: e.target.value || undefined } })} />
       </Field>

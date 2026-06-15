@@ -27,14 +27,14 @@ describe('RulesSection', () => {
     ])
     render(<RulesSection envId="dev" canWrite={true} />)
     await userEvent.click(await screen.findByRole('button', { name: /add rule/i }))
-    await userEvent.type(screen.getByLabelText('ID'), 'block-bad')
     await userEvent.selectOptions(screen.getByLabelText('Action'), 'block')
     await userEvent.type(screen.getByLabelText(/reason/i), 'nope')
     await userEvent.click(screen.getByRole('button', { name: /^add$/i }))
     await userEvent.click(screen.getByRole('button', { name: /save/i }))
     await waitFor(() => expect(calls).toHaveLength(1))
     const body = JSON.parse(calls[0]!.body as string)
-    expect(body.data[0]).toMatchObject({ id: 'block-bad', action: { type: 'block', reason: 'nope' } })
+    expect(body.data[0]).toMatchObject({ action: { type: 'block', reason: 'nope' } })
+    expect(body.data[0].id).toMatch(/^rule-\d+$/)   // system-generated id
   })
 
   it('multi-select delete: select all then delete removes all rules', async () => {

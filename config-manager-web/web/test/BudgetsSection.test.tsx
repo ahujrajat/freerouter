@@ -27,7 +27,6 @@ describe('BudgetsSection', () => {
     ])
     render(<BudgetsSection envId="dev" canWrite={true} />)
     await userEvent.click(await screen.findByRole('button', { name: /add budget/i }))
-    await userEvent.type(screen.getByLabelText('ID'), 'team-daily')
     await userEvent.type(screen.getByLabelText('Max spend (USD)'), '0.5')
     await userEvent.selectOptions(screen.getByLabelText('Window'), 'daily')
     await userEvent.selectOptions(screen.getByLabelText('On limit reached'), 'warn')
@@ -37,7 +36,8 @@ describe('BudgetsSection', () => {
     await waitFor(() => expect(calls).toHaveLength(1))
     const body = JSON.parse(calls[0]!.body as string)
     expect(body.data.defaultModel).toBe('keep')
-    expect(body.data.budgets[0]).toMatchObject({ id: 'team-daily', window: 'daily', maxSpendUsd: 0.5, onLimitReached: 'warn', scope: { type: 'global' } })
+    expect(body.data.budgets[0]).toMatchObject({ window: 'daily', maxSpendUsd: 0.5, onLimitReached: 'warn', scope: { type: 'global' } })
+    expect(body.data.budgets[0].id).toMatch(/^budget-\d+$/)   // system-generated id
   })
 
   it('hides Add for viewers', async () => {

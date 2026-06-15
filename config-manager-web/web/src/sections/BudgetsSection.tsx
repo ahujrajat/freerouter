@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useConfig } from '../app/useConfig.js'
 import { useRowSelection } from '../app/useRowSelection.js'
+import { nextId } from '../app/ids.js'
 import { Field } from '../components/Field.js'
 import { TextInput } from '../components/TextInput.js'
 import { Button } from '../components/Button.js'
@@ -38,7 +39,7 @@ export function BudgetsSection({ envId, canWrite }: { envId: string; canWrite: b
   const onModalConfirm = () => {
     if (editing === null) return
     const next = [...budgets]
-    if (editing.index === -1) next.push(editing.draft)
+    if (editing.index === -1) next.push({ ...editing.draft, id: nextId(budgets.map(b => b.id), 'budget') })
     else next[editing.index] = editing.draft
     setBudgets(next)
     setEditing(null)
@@ -95,7 +96,6 @@ function BudgetForm({ draft, onChange }: { draft: Budget; onChange: (d: Budget) 
   }
   return (
     <>
-      <Field label="ID" htmlFor="b-id"><TextInput id="b-id" value={draft.id} onChange={(e) => set({ id: e.target.value })} /></Field>
       <Field label="Max spend (USD)" htmlFor="b-max"><TextInput id="b-max" value={maxStr} onChange={(e) => onMaxChange(e.target.value)} /></Field>
       <Field label="Window" htmlFor="b-win">
         <select id="b-win" value={draft.window} onChange={(e) => set({ window: e.target.value })}>{WINDOWS.map(w => <option key={w} value={w}>{w}</option>)}</select>
