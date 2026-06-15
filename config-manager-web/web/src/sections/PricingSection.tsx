@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useConfig } from '../app/useConfig.js'
+import { api } from '../api.js'
 import { Field } from '../components/Field.js'
 import { TextInput } from '../components/TextInput.js'
 import { Button } from '../components/Button.js'
 import { Toast } from '../components/Toast.js'
 import { Table } from '../components/Table.js'
 import { Modal } from '../components/Modal.js'
+import { Toggle } from '../components/Toggle.js'
 import { ConflictBanner } from '../components/ConflictBanner.js'
+import type { FetchedPricing } from '../types.js'
 
 interface Rate { input: number; output: number; cachedInput?: number }
 type Overrides = Record<string, Rate>
@@ -37,6 +40,26 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
   const [over, setOver] = useState<Overrides>({})
   const [draft, setDraft] = useState<DraftState | null>(null)
   useEffect(() => { if (cfg.data !== null) setOver(cfg.data.pricingOverrides ?? {}) }, [cfg.data])
+
+  const [fetchOpen, setFetchOpen] = useState(false)
+  const [source, setSource] = useState('litellm')
+  const [fetched, setFetched] = useState<Record<string, Rate>>({})
+  const [picked, setPicked] = useState<Record<string, boolean>>({})
+
+  const runFetch = async () => {
+    const manifest = await api.get<FetchedPricing>(`/api/env/${envId}/pricing-fetch?source=${source}`)
+    const flat: Record<string, Rate> = {}
+    for (const models of Object.values(manifest)) for (const [model, rate] of Object.entries(models)) flat[model] = rate
+    setFetched(flat); setPicked({})
+  }
+  const applyFetched = () => {
+    setOver(prev => {
+      const next = { ...prev }
+      for (const [model, on] of Object.entries(picked)) if (on && fetched[model] !== undefined) next[model] = fetched[model]!
+      return next
+    })
+    setFetchOpen(false)
+  }
 
   if (cfg.loading) return <div className="card">Loading…</div>
 
@@ -84,6 +107,7 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
         ))}
       </Table>
       {canWrite && <Button onClick={() => setDraft(blankDraft())}>Add override</Button>}{' '}
+      {canWrite && <Button variant="ghost" onClick={() => { setFetchOpen(true); setFetched({}) }}>Fetch from source</Button>}{' '}
       <Button disabled={!canWrite} onClick={() => commit(over)}>Save</Button>
       <Toast message={cfg.toast} />
 
@@ -125,6 +149,24 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
             </Field>
           </>
         )}
+      </Modal>
+
+      <Modal open={fetchOpen} title="Fetch pricing" onClose={() => setFetchOpen(false)}
+        footer={<Button onClick={applyFetched}>Apply selected</Button>}>
+        <Field label="Source" htmlFor="pf-src">
+          <select id="pf-src" value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value="litellm">LiteLLM</option><option value="openrouter">OpenRouter</option>
+          </select>
+        </Field>
+        <Button onClick={runFetch}>Fetch</Button>
+        <div style={{ maxHeight: 240, overflow: 'auto', marginTop: 8 }}>
+          {Object.keys(fetched).map((model) => (
+            <div key={model} className="field">
+              <Toggle id={`pf-${model}`} label={model} checked={picked[model] === true}
+                onChange={(v) => setPicked(prev => ({ ...prev, [model]: v }))} />
+            </div>
+          ))}
+        </div>
       </Modal>
     </div>
   )
