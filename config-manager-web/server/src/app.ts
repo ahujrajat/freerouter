@@ -8,6 +8,7 @@ import type { RoleResolver } from './auth/rbac.js'
 import type { AuditLog } from './store/audit-log.js'
 import { registerAuthRoutes } from './routes/auth-routes.js'
 import { registerConfigRoutes } from './routes/config-routes.js'
+import { registerByokRoutes } from './routes/byok-routes.js'
 import type { SessionUser } from './types.js'
 
 export interface AppDeps {
@@ -39,6 +40,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.decorate('deps', deps)
   await app.register(registerAuthRoutes)
   await app.register(registerConfigRoutes)
+  await app.register(registerByokRoutes)
   return app
 }
 

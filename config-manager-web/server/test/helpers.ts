@@ -8,6 +8,14 @@ import { AuditLog } from '../src/store/audit-log.js'
 import type { OidcProvider, Claims } from '../src/auth/oidc.js'
 import { KeyBackendRegistry } from '../src/byok/registry.js'
 import { LocalKeyBackend } from '../src/byok/local-backend.js'
+import { ReferenceKeyBackend } from '../src/byok/reference-backend.js'
+import type { SecretManagerClient } from '../src/byok/types.js'
+
+class MemoryClient implements SecretManagerClient {
+  store: Record<string, string> = {}
+  async writeSecret(ref: string, secret: string) { this.store[ref] = secret }
+  async secretExists(ref: string) { return ref in this.store }
+}
 
 export function makeTempEnv(): { dir: string; environmentsFile: string } {
   const dir = mkdtempSync(join(tmpdir(), 'fr-app-'))
@@ -48,7 +56,10 @@ export function buildTestApp(opts: { claims?: Claims } = {}): ReturnType<typeof 
     audit: new AuditLog(join(dir, 'audit.jsonl')),
     redirectUri: 'http://localhost/auth/callback',
     afterLoginRedirect: '/',
-    keyBackends: new KeyBackendRegistry({ local: new LocalKeyBackend('a'.repeat(64)) }),
+    keyBackends: new KeyBackendRegistry({
+      local: new LocalKeyBackend('a'.repeat(64)),
+      vault: new ReferenceKeyBackend('vault', new MemoryClient()),
+    }),
   }
   return buildApp(deps)
 }
