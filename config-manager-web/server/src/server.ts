@@ -46,6 +46,7 @@ async function main(): Promise<void> {
     keyBackends,
     pricingFetcher,
     ...(sidecar !== undefined && { sidecar }),
+    ...(cfg.webDistDir !== undefined && { webDistDir: cfg.webDistDir }),
   })
   await app.listen({ host: '0.0.0.0', port: cfg.port })
   // eslint-disable-next-line no-console

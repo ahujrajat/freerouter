@@ -32,5 +32,6 @@ export function loadServerConfig(env: Env = process.env): ServerConfig {
     ...(env.BYOK_MASTER_KEY !== undefined && { byokMasterKey: env.BYOK_MASTER_KEY }),
     ...(env.GEPA_SIDECAR_URL !== undefined && { gepaSidecarUrl: env.GEPA_SIDECAR_URL }),
     ...(env.GEPA_SIDECAR_TOKEN !== undefined && { gepaSidecarToken: env.GEPA_SIDECAR_TOKEN }),
+    ...(env.WEB_DIST_DIR !== undefined && { webDistDir: env.WEB_DIST_DIR }),
   }
 }

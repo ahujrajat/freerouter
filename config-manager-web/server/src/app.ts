@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import cookie from '@fastify/cookie'
 import secureSession from '@fastify/secure-session'
+import fastifyStatic from '@fastify/static'
 import { createHash } from 'node:crypto'
 import type { OidcProvider } from './auth/oidc.js'
 import type { EnvironmentRegistry } from './environments.js'
@@ -25,6 +26,7 @@ export interface AppDeps {
   keyBackends: import('./byok/registry.js').KeyBackendRegistry
   pricingFetcher: import('./pricing/pricing-fetcher.js').PricingFetcher
   sidecar?: import('./optimization/sidecar-client.js').SidecarClient
+  webDistDir?: string
 }
 
 // Derive a 32-byte secure-session key deterministically from the secret.
@@ -49,6 +51,18 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(registerPricingRoutes)
   await app.register(registerCandidatesRoutes)
   await app.register(registerAuditRoutes)
+
+  if (deps.webDistDir !== undefined) {
+    await app.register(fastifyStatic, { root: deps.webDistDir, wildcard: false })
+    // SPA fallback: any GET that isn't an API/auth route and wasn't a static file → index.html
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/api/') && !req.url.startsWith('/auth/')) {
+        return reply.sendFile('index.html')
+      }
+      return reply.code(404).send({ error: 'not found' })
+    })
+  }
+
   return app
 }
 

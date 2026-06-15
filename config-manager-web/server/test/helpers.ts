@@ -61,7 +61,7 @@ export function cookieHeader(cookies: Array<{ name: string; value: string }>): s
   return cookies.map(c => `${c.name}=${encodeURIComponent(c.value)}`).join('; ')
 }
 
-export async function buildTestApp(opts: { claims?: Claims; withDir?: boolean } = {}): Promise<any> {
+export async function buildTestApp(opts: { claims?: Claims; withDir?: boolean; webDistDir?: string } = {}): Promise<any> {
   const { dir, environmentsFile } = makeTempEnv()
   const deps: AppDeps = {
     sessionSecret: 'k'.repeat(32),
@@ -77,6 +77,7 @@ export async function buildTestApp(opts: { claims?: Claims; withDir?: boolean } 
     }),
     pricingFetcher: fakePricingFetcher,
     sidecar: fakeSidecar,
+    ...(opts.webDistDir !== undefined && { webDistDir: opts.webDistDir }),
   }
   const app = await buildApp(deps)
   return opts.withDir ? { app, dir } : app

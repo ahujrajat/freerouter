@@ -18,6 +18,7 @@ export interface ServerConfig {
   byokMasterKey?: string
   gepaSidecarUrl?: string
   gepaSidecarToken?: string
+  webDistDir?: string
 }
 
 export interface SessionUser {
