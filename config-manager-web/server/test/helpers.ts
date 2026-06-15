@@ -37,7 +37,7 @@ export function makeTempEnv(): { dir: string; environmentsFile: string } {
   const paths = {
     config: join(dir, 'config.json'), rules: join(dir, 'rules.json'), env: join(dir, '.env'),
     pricing: join(dir, 'pricing.json'), optimizedStore: join(dir, 'opt.json'), candidates: join(dir, 'cand.json'),
-    byok: join(dir, 'byok.json'),
+    byok: join(dir, 'byok.json'), spend: join(dir, 'spend.jsonl'),
   }
   const environmentsFile = join(dir, 'environments.json')
   writeFileSync(environmentsFile, JSON.stringify([

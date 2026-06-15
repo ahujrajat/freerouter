@@ -35,6 +35,7 @@ export interface EnvironmentPaths {
   optimizedStore: string
   candidates: string
   byok: string
+  spend?: string
 }
 
 export interface Environment {

@@ -43,6 +43,7 @@ export function buildDevDeps(): DevBoot {
   const dataDir = resolve(process.env.FR_ADMIN_DEV_DATA ?? './.dev-data')
   mkdirSync(join(dataDir, 'dev'), { recursive: true })
 
+  const spendFile = join(dataDir, 'dev', 'spend.jsonl')
   const paths = {
     config: join(dataDir, 'dev', 'config.json'),
     rules: join(dataDir, 'dev', 'rules.json'),
@@ -51,10 +52,24 @@ export function buildDevDeps(): DevBoot {
     optimizedStore: join(dataDir, 'dev', 'optimized-prompts.json'),
     candidates: join(dataDir, 'dev', 'candidates.json'),
     byok: join(dataDir, 'dev', 'byok.json'),
+    spend: spendFile,
   }
   const environmentsFile = join(dataDir, 'environments.json')
   if (!existsSync(environmentsFile)) {
     writeFileSync(environmentsFile, JSON.stringify([{ id: 'dev', label: 'Development', paths }], null, 2))
+  }
+  if (!existsSync(spendFile)) {
+    const now = Date.now()
+    const DAY = 86_400_000
+    const seedRecords = [
+      { userId: 'alice', teamId: 'eng', departmentId: 'product', provider: 'openai', model: 'gpt-4o', tokens: { promptTokens: 1200, completionTokens: 400, totalTokens: 1600 }, costUsd: 0.032, timestamp: now - 4 * DAY },
+      { userId: 'alice', teamId: 'eng', departmentId: 'product', provider: 'openai', model: 'gpt-4o-mini', tokens: { promptTokens: 800, completionTokens: 200, totalTokens: 1000 }, costUsd: 0.0006, timestamp: now - 3 * DAY },
+      { userId: 'bob', teamId: 'data', departmentId: 'analytics', provider: 'anthropic', model: 'claude-3-5-sonnet', tokens: { promptTokens: 2000, completionTokens: 600, totalTokens: 2600 }, costUsd: 0.078, timestamp: now - 2 * DAY },
+      { userId: 'bob', teamId: 'data', departmentId: 'analytics', provider: 'anthropic', model: 'claude-3-5-sonnet', tokens: { promptTokens: 1500, completionTokens: 500, totalTokens: 2000 }, costUsd: 0.060, timestamp: now - 1 * DAY },
+      { userId: 'carol', teamId: 'eng', departmentId: 'product', provider: 'openai', model: 'gpt-4o', tokens: { promptTokens: 900, completionTokens: 300, totalTokens: 1200 }, costUsd: 0.024, timestamp: now - 1 * DAY },
+      { userId: 'carol', teamId: 'eng', departmentId: 'product', provider: 'openai', model: 'gpt-4o-mini', tokens: { promptTokens: 600, completionTokens: 150, totalTokens: 750 }, costUsd: 0.00045, timestamp: now },
+    ]
+    writeFileSync(spendFile, seedRecords.map(r => JSON.stringify(r)).join('\n'), 'utf-8')
   }
 
   const deps: AppDeps = {

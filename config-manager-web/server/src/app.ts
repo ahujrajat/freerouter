@@ -13,6 +13,7 @@ import { registerByokRoutes } from './routes/byok-routes.js'
 import { registerPricingRoutes } from './routes/pricing-routes.js'
 import { registerCandidatesRoutes } from './routes/candidates-routes.js'
 import { registerAuditRoutes } from './routes/audit-routes.js'
+import { registerReportRoutes } from './routes/report-routes.js'
 import type { SessionUser } from './types.js'
 
 export interface AppDeps {
@@ -51,6 +52,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(registerPricingRoutes)
   await app.register(registerCandidatesRoutes)
   await app.register(registerAuditRoutes)
+  await app.register(registerReportRoutes)
 
   if (deps.webDistDir !== undefined) {
     await app.register(fastifyStatic, { root: deps.webDistDir, wildcard: false })
