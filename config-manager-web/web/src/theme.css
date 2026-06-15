@@ -205,9 +205,14 @@ main { min-width: 0; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 
 /* ── Tables ─────────────────────────────────────────────────────────────── */
-.table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 12px 0; }
+.table-wrap { width: 100%; overflow-x: auto; margin: 12px 0; }
+.table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .table th, .table td { text-align: left; padding: 11px 12px; font-size: 14px;
-  border-bottom: 1px solid var(--border); }
+  border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.table td:first-child, .table th:first-child { width: 1%; white-space: nowrap; } /* select column */
+
+/* Action button rows — wrap cleanly instead of warping */
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
 .table thead th {
   position: sticky; top: 0; background: var(--surface-3); color: var(--text-muted);
   font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;

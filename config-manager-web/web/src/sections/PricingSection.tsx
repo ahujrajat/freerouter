@@ -163,27 +163,29 @@ export function PricingSection({ envId, canWrite }: { envId: string; canWrite: b
           </tr>
         ))}
       </Table>
-      {canWrite && sel.count > 0 && (
-        <Button variant="ghost" onClick={() => {
-          const next = { ...over }
-          for (const k of sel.selected) delete next[k]
-          commit(next)
-          sel.clear()
-        }}>Delete selected ({sel.count})</Button>
-      )}{' '}
-      {canWrite && <Button onClick={() => setDraft(blankDraft())}>Add override</Button>}{' '}
-      {canWrite && <Button variant="ghost" onClick={() => { setFetchOpen(true); setFetched({}) }}>Fetch from source</Button>}{' '}
-      <Button variant="ghost" onClick={() => downloadJson('pricing-overrides.json', over)}>Download current</Button>{' '}
-      <Button variant="ghost" onClick={() => downloadJson('pricing-template.json', PRICING_TEMPLATE)}>Download template</Button>{' '}
-      {canWrite && (
-        <label className="btn btn--ghost" style={{ cursor: 'pointer' }}>
-          Upload pricing file
-          <input type="file" accept="application/json,.json" style={{ display: 'none' }}
-            aria-label="Upload pricing file"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f) }} />
-        </label>
-      )}{' '}
-      <Button disabled={!canWrite} onClick={() => commit(over)}>Save</Button>
+      <div className="actions">
+        {canWrite && sel.count > 0 && (
+          <Button variant="ghost" onClick={() => {
+            const next = { ...over }
+            for (const k of sel.selected) delete next[k]
+            commit(next)
+            sel.clear()
+          }}>Delete selected ({sel.count})</Button>
+        )}
+        {canWrite && <Button onClick={() => setDraft(blankDraft())}>Add override</Button>}
+        {canWrite && <Button variant="ghost" onClick={() => { setFetchOpen(true); setFetched({}) }}>Fetch from source</Button>}
+        <Button variant="ghost" onClick={() => downloadJson('pricing-overrides.json', over)}>Download current</Button>
+        <Button variant="ghost" onClick={() => downloadJson('pricing-template.json', PRICING_TEMPLATE)}>Download template</Button>
+        {canWrite && (
+          <label className="btn btn--ghost" style={{ cursor: 'pointer' }}>
+            Upload pricing file
+            <input type="file" accept="application/json,.json" style={{ display: 'none' }}
+              aria-label="Upload pricing file"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f) }} />
+          </label>
+        )}
+        <Button disabled={!canWrite} onClick={() => commit(over)}>Save</Button>
+      </div>
       <Toast message={cfg.toast} />
 
       <Modal
