@@ -807,9 +807,9 @@ Everything that lives in `freerouter.config.json`, plus BYOK keys, pricing, opti
 | **Rate Limit** | `requestsPerMinute`, `tokensPerMinute`, `burstAllowance` |
 | **Budgets** | Full CRUD over `BudgetPolicy[]` — scope, window, caps, `onLimitReached`, alert thresholds |
 | **Rules** | Full CRUD over `Rule[]` — match predicates, pin / strategy / block actions, priority |
-| **Pricing Overrides** | Per-model `input` / `output` / `cachedInput` (USD per 1M tokens). Includes a fetch dialog with LiteLLM / OpenRouter / custom URL presets |
+| **Pricing Overrides** | Per-model `input` / `output` / `cachedInput` (USD per 1M tokens). Includes a **Fetch from source** dialog (LiteLLM / OpenRouter) with a **Select-all** toggle for bulk-applying fetched models |
 | **BYOK Keys** | Write-only key management per `(userId, provider)`. The secret is never returned after submission; stored via the configured key backend (local AES-256-GCM, or Vault/AWS/Azure/GCP) |
-| **Optimization** | GEPA pipeline opt-ins: `telemetryExport`, `shadowRouter`, `promptOptimization` settings |
+| **Optimization** | Per-request `promptOptimization` and proactive `autoOptimization` settings (enable flags, target / fallback models, candidate + optimized-store paths) |
 | **Candidates** | Auto-optimization candidates panel — view ROI-ranked candidates, trigger optimization, track status |
 | **Audit** | Toggle `audit.enabled`; view the audit log |
 | **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN` |
@@ -820,15 +820,26 @@ Every save uses **optimistic locking** (ETag + `If-Match`) to prevent lost-updat
 
 ### How do I run it?
 
+**Local (zero config) — to explore the UI:** `npm run dev:server` runs in dev mode (`FR_ADMIN_DEV=1`): no OIDC provider and no required env vars — it auto-logs you in as a "Dev Admin" and stores config under `./.dev-data/`. This has **no real authentication** and is for local use only.
+
 ```bash
 cd config-manager-web
 npm install
+npm run dev:server   # API on :7700 (dev mode: auto-login, ./.dev-data/)
+npm run dev:web      # Vite on :5173, proxies /api,/auth to :7700 — open this in your browser
+```
+
+**Production:** a real deployment requires OIDC + session config and serves the built SPA from the server (single origin):
+
+```bash
 npm run build              # build the SPA (web/dist) and the server
-# configure OIDC + environments via env vars (see config-manager-web/README.md), then:
+# set OIDC_ISSUER / OIDC_CLIENT_ID / OIDC_CLIENT_SECRET / OIDC_REDIRECT_URI /
+# SESSION_SECRET / ENVIRONMENTS_FILE / ROLE_MAPPING_FILE / AUDIT_LOG_FILE /
+# BYOK_MASTER_KEY, then:
 WEB_DIST_DIR=./web/dist npm run --workspace server start
 ```
 
-See `config-manager-web/README.md` for the full list of environment variables (`OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `SESSION_SECRET`, `ENVIRONMENTS_FILE`, `WEB_DIST_DIR`, etc.).
+See `config-manager-web/README.md` for the full list of environment variables (including optional `GEPA_SIDECAR_URL` for candidate optimization and `VAULT_ADDR`/`VAULT_TOKEN` for the Vault BYOK backend).
 
 ### Does saving rules require a router restart?
 
@@ -848,15 +859,14 @@ The **BYOK Keys** section manages per-`(userId, provider)` API keys. Keys are ac
 
 ### How do I fetch live model pricing from inside the web UI?
 
-The **Pricing Overrides** section has a **Fetch pricing…** button with three source presets:
+The **Pricing Overrides** section has a **Fetch from source** dialog with two source presets:
 
 | Source | URL | Auth | Notes |
 |---|---|---|---|
 | LiteLLM | community-maintained `model_prices_and_context_window.json` on GitHub | none | Tracks ~hundreds of models across all major vendors. Updated frequently. |
-| OpenRouter API | `https://openrouter.ai/api/v1/models` | none for the public catalog | Live aggregator. |
-| Custom URL | (yours) | optional bearer token | Self-hosted JSON in the FreeRouter manifest shape. |
+| OpenRouter | `https://openrouter.ai/api/v1/models` | none for the public catalog | Live aggregator. |
 
-Each preset uses the same `transformLiteLLM` / `transformOpenRouter` functions from `src/finops/pricing-source.ts` that the runtime's `liteLLMPricingSource()` / `openRouterPricingSource()` factories use — there is only one implementation, shared between the web manager and the core router.
+The server filters the fetched manifest to the providers enabled in the active environment, then the dialog lists the models with a per-model checkbox plus a **Select all / Deselect all** toggle (and a "N of M selected" count) for bulk apply. Each source uses the same `transformLiteLLM` / `transformOpenRouter` functions from `src/finops/pricing-source.ts` that the runtime's `liteLLMPricingSource()` / `openRouterPricingSource()` factories use — one implementation, shared between the web manager and the core router. The fetch runs **server-side**, so source URLs and TLS handling stay off the browser.
 
 ---
 
