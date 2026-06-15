@@ -46,4 +46,22 @@ describe('BudgetsSection', () => {
     await screen.findByRole('button', { name: /save/i })
     expect(screen.queryByRole('button', { name: /add budget/i })).toBeNull()
   })
+
+  it('multi-select delete: select all then delete removes all budgets', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = []
+    mockFetchSequence([
+      () => cfgRes([
+        { id: 'b1', scope: { type: 'global' }, window: 'monthly', maxSpendUsd: 10, onLimitReached: 'warn' },
+        { id: 'b2', scope: { type: 'org', orgId: 'o' }, window: 'daily', maxSpendUsd: 5, onLimitReached: 'block' },
+      ]),
+      (u, i) => { calls.push({ url: u, init: i! }); return new Response(JSON.stringify({ data: {}, version: 'v2' }), { status: 200 }) },
+    ])
+    render(<BudgetsSection envId="dev" canWrite={true} />)
+    await screen.findByText('b1')
+    await userEvent.click(screen.getByLabelText(/select all/i))
+    await userEvent.click(screen.getByRole('button', { name: /delete selected/i }))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    const body = JSON.parse(calls[0]!.init.body as string)
+    expect(body.data.budgets).toEqual([])
+  })
 })

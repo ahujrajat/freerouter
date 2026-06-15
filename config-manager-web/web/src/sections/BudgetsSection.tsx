@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useConfig } from '../app/useConfig.js'
+import { useRowSelection } from '../app/useRowSelection.js'
 import { Field } from '../components/Field.js'
 import { TextInput } from '../components/TextInput.js'
 import { Button } from '../components/Button.js'
@@ -28,6 +29,7 @@ export function BudgetsSection({ envId, canWrite }: { envId: string; canWrite: b
   const cfg = useConfig<Cfg>(envId)
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [editing, setEditing] = useState<{ index: number; draft: Budget } | null>(null)
+  const sel = useRowSelection<string>()
   useEffect(() => { if (cfg.data !== null) setBudgets(cfg.data.budgets ?? []) }, [cfg.data])
 
   if (cfg.loading) return <div className="card">Loading…</div>
@@ -47,9 +49,15 @@ export function BudgetsSection({ envId, canWrite }: { envId: string; canWrite: b
       <h2>Budgets</h2>
       {cfg.conflict && <ConflictBanner onReload={cfg.reload} />}
       {cfg.errors.length > 0 && <div className="banner banner--conflict" role="alert">{cfg.errors.join('; ')}</div>}
-      <Table headers={['ID', 'Scope', 'Window', 'Max $', 'On limit', canWrite ? 'Actions' : '']}>
+      <Table headers={[
+        <input type="checkbox" aria-label="Select all"
+          checked={budgets.length > 0 && budgets.every(b => sel.isSelected(b.id))}
+          onChange={(e) => sel.setMany(budgets.map(b => b.id), e.target.checked)} />,
+        'ID', 'Scope', 'Window', 'Max $', 'On limit', canWrite ? 'Actions' : ''
+      ]}>
         {budgets.map((b, i) => (
           <tr key={i}>
+            <td><input type="checkbox" aria-label={`Select ${b.id}`} checked={sel.isSelected(b.id)} onChange={() => sel.toggle(b.id)} /></td>
             <td>{b.id}</td><td>{b.scope.type}</td><td>{b.window}</td><td>{b.maxSpendUsd}</td><td>{b.onLimitReached}</td>
             <td>{canWrite && (
               <div className="row-actions">
@@ -61,6 +69,9 @@ export function BudgetsSection({ envId, canWrite }: { envId: string; canWrite: b
         ))}
       </Table>
       {canWrite && <Button onClick={() => setEditing({ index: -1, draft: blank() })}>Add budget</Button>}{' '}
+      {canWrite && sel.count > 0 && (
+        <Button variant="ghost" onClick={() => { commit(budgets.filter(b => !sel.isSelected(b.id))); sel.clear() }}>Delete selected ({sel.count})</Button>
+      )}{' '}
       <Button disabled={!canWrite} onClick={() => commit(budgets)}>Save</Button>
       <Toast message={cfg.toast} />
 

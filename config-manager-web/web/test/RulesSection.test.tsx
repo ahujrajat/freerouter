@@ -36,4 +36,22 @@ describe('RulesSection', () => {
     const body = JSON.parse(calls[0]!.body as string)
     expect(body.data[0]).toMatchObject({ id: 'block-bad', action: { type: 'block', reason: 'nope' } })
   })
+
+  it('multi-select delete: select all then delete removes all rules', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = []
+    mockFetchSequence([
+      () => new Response(JSON.stringify({ data: [
+        { id: 'r1', match: {}, action: { type: 'pin', model: 'gpt-4o' } },
+        { id: 'r2', match: { modelPattern: 'claude-*' }, action: { type: 'block', reason: 'nope' } },
+      ], version: 'v1' }), { status: 200 }),
+      (u, i) => { calls.push({ url: u, init: i! }); return new Response(JSON.stringify({ data: [], version: 'v2' }), { status: 200 }) },
+    ])
+    render(<RulesSection envId="dev" canWrite={true} />)
+    await screen.findByText('r1')
+    await userEvent.click(screen.getByLabelText(/select all/i))
+    await userEvent.click(screen.getByRole('button', { name: /delete selected/i }))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    const body = JSON.parse(calls[0]!.init.body as string)
+    expect(body.data).toEqual([])
+  })
 })

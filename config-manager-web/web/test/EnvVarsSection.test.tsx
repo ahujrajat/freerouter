@@ -38,4 +38,21 @@ describe('EnvVarsSection', () => {
     await screen.findByRole('button', { name: /save/i })
     expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
   })
+
+  it('multi-select delete: select one row then delete selected then save omits deleted key', async () => {
+    const calls: RequestInit[] = []
+    mockFetchSequence([
+      () => new Response(JSON.stringify({ data: { FOO: 'foo', BAR: 'bar' }, version: 'v1' }), { status: 200 }),
+      (_u, i) => { calls.push(i!); return new Response(JSON.stringify({ data: {}, version: 'v2' }), { status: 200 }) },
+    ])
+    render(<EnvVarsSection envId="dev" canWrite={true} />)
+    await screen.findByDisplayValue('FOO')
+    await userEvent.click(screen.getByLabelText(/select row 0/i))
+    await userEvent.click(screen.getByRole('button', { name: /delete selected/i }))
+    await userEvent.click(screen.getByRole('button', { name: /save/i }))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    const body = JSON.parse(calls[0]!.body as string)
+    expect(body.data).not.toHaveProperty('FOO')
+    expect(body.data).toMatchObject({ BAR: 'bar' })
+  })
 })

@@ -39,4 +39,29 @@ describe('CandidatesSection', () => {
     await screen.findByText('m')
     expect(screen.queryByRole('button', { name: /optimize/i })).toBeNull()
   })
+
+  it('multi-select delete: select all and delete calls DELETE for each fingerprint then reloads', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const fp1 = 'eh:gpt-4o:ab'
+    const fp2 = 'eh:claude-3:cd'
+    mockFetchSequence([
+      () => new Response(JSON.stringify([
+        { fingerprint: fp1, model: 'gpt-4o', count: 5, estPredictedSavingsUsd: 0.05, status: 'observed' },
+        { fingerprint: fp2, model: 'claude-3', count: 3, estPredictedSavingsUsd: 0.02, status: 'observed' },
+      ]), { status: 200 }),
+      (url, init) => { calls.push({ url, init }); return new Response('{}', { status: 200 }) },
+      (url, init) => { calls.push({ url, init }); return new Response('{}', { status: 200 }) },
+      () => new Response(JSON.stringify([]), { status: 200 }),
+    ])
+    render(<CandidatesSection envId="dev" canWrite={true} />)
+    await screen.findByText('gpt-4o')
+    await userEvent.click(screen.getByLabelText(/select all/i))
+    await userEvent.click(screen.getByRole('button', { name: /delete selected/i }))
+    await waitFor(() => expect(calls).toHaveLength(2))
+    const deleteCalls = calls.filter(c => c.init?.method === 'DELETE')
+    expect(deleteCalls).toHaveLength(2)
+    const urls = deleteCalls.map(c => c.url)
+    expect(urls.some(u => u.includes(encodeURIComponent(fp1)))).toBe(true)
+    expect(urls.some(u => u.includes(encodeURIComponent(fp2)))).toBe(true)
+  })
 })

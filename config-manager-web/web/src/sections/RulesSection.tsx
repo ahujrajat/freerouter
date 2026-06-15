@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useConfig } from '../app/useConfig.js'
+import { useRowSelection } from '../app/useRowSelection.js'
 import { Field } from '../components/Field.js'
 import { TextInput } from '../components/TextInput.js'
 import { Button } from '../components/Button.js'
@@ -22,6 +23,7 @@ export function RulesSection({ envId, canWrite }: { envId: string; canWrite: boo
   const rules = useConfig<Rule[]>(envId, 'rules')
   const [list, setList] = useState<Rule[]>([])
   const [editing, setEditing] = useState<{ index: number; draft: Rule } | null>(null)
+  const sel = useRowSelection<string>()
   useEffect(() => { if (rules.data !== null) setList(rules.data) }, [rules.data])
 
   if (rules.loading) return <div className="card">Loading…</div>
@@ -39,9 +41,15 @@ export function RulesSection({ envId, canWrite }: { envId: string; canWrite: boo
       <h2>Rules</h2>
       {rules.conflict && <ConflictBanner onReload={rules.reload} />}
       {rules.errors.length > 0 && <div className="banner banner--conflict" role="alert">{rules.errors.join('; ')}</div>}
-      <Table headers={['ID', 'Model pattern', 'Action', canWrite ? 'Actions' : '']}>
+      <Table headers={[
+        <input type="checkbox" aria-label="Select all"
+          checked={list.length > 0 && list.every(r => sel.isSelected(r.id))}
+          onChange={(e) => sel.setMany(list.map(r => r.id), e.target.checked)} />,
+        'ID', 'Model pattern', 'Action', canWrite ? 'Actions' : ''
+      ]}>
         {list.map((r, i) => (
           <tr key={i}>
+            <td><input type="checkbox" aria-label={`Select ${r.id}`} checked={sel.isSelected(r.id)} onChange={() => sel.toggle(r.id)} /></td>
             <td>{r.id}</td><td>{r.match.modelPattern ?? '*'}</td><td>{actionSummary(r.action)}</td>
             <td>{canWrite && (
               <div className="row-actions">
@@ -53,6 +61,9 @@ export function RulesSection({ envId, canWrite }: { envId: string; canWrite: boo
         ))}
       </Table>
       {canWrite && <Button onClick={() => setEditing({ index: -1, draft: blank() })}>Add rule</Button>}{' '}
+      {canWrite && sel.count > 0 && (
+        <Button variant="ghost" onClick={() => { commit(list.filter(r => !sel.isSelected(r.id))); sel.clear() }}>Delete selected ({sel.count})</Button>
+      )}{' '}
       <Button disabled={!canWrite} onClick={() => commit(list)}>Save</Button>
       <Toast message={rules.toast} />
 
