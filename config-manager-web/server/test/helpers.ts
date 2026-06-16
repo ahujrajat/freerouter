@@ -65,9 +65,9 @@ export async function buildTestApp(opts: { claims?: Claims; withDir?: boolean; w
   const { dir, environmentsFile } = makeTempEnv()
   const deps: AppDeps = {
     sessionSecret: 'k'.repeat(32),
-    oidc: new FakeOidc(opts.claims ?? { sub: 'admin-1', name: 'Admin', groups: ['fr-admins'] }),
+    oidc: new FakeOidc(opts.claims ?? { sub: 'admin-1', name: 'Admin', groups: ['fin-admins'] }),
     environments: EnvironmentRegistry.load(environmentsFile),
-    roles: new RoleResolver({ defaults: { 'fr-admins': 'admin', 'fr-viewers': 'viewer' } }),
+    roles: new RoleResolver({ defaults: { 'fin-admins': 'admin', 'fin-viewers': 'viewer' } }),
     audit: new AuditLog(join(dir, 'audit.jsonl')),
     redirectUri: 'http://localhost/auth/callback',
     afterLoginRedirect: '/',

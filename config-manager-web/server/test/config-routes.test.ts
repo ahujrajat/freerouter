@@ -53,7 +53,7 @@ describe('config routes', () => {
   })
 
   it('forbids a viewer from writing (403)', async () => {
-    const app = await buildTestApp({ claims: { sub: 'v1', name: 'Viewer', groups: ['fr-viewers'] } })
+    const app = await buildTestApp({ claims: { sub: 'v1', name: 'Viewer', groups: ['fin-viewers'] } })
     const cookie = await login(app)
     const { version } = (await app.inject({ method: 'GET', url: '/api/env/dev/config', headers: { cookie } })).json()
     const res = await app.inject({ method: 'PUT', url: '/api/env/dev/config', headers: { cookie }, payload: { data: { defaultModel: 'x' }, version } })
@@ -110,7 +110,7 @@ describe('config routes', () => {
   })
 
   it('forbids a viewer from writing rules (403)', async () => {
-    const app = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const app = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fin-viewers'] } })
     const cookie = await login(app)
     const { version } = (await app.inject({ method: 'GET', url: '/api/env/dev/rules', headers: { cookie } })).json()
     const res = await app.inject({ method: 'PUT', url: '/api/env/dev/rules', headers: { cookie }, payload: { data: [], version } })

@@ -17,7 +17,7 @@ import type { SidecarClient } from '../../server/src/optimization/sidecar-client
 // so /auth/login completes the loop without a real IdP.
 class FakeOidc implements OidcProvider {
   authUrl(req: AuthRequest): string { return `${req.redirectUri}?code=fake&state=${req.state}` }
-  async exchange(): Promise<Claims> { return { sub: 'e2e-admin', name: 'E2E Admin', groups: ['fr-admins'] } }
+  async exchange(): Promise<Claims> { return { sub: 'e2e-admin', name: 'E2E Admin', groups: ['fin-admins'] } }
 }
 
 const fakePricing: PricingFetcher = { async fetch() { return { google: { 'gemini-2.5-flash': { input: 0.075, output: 0.3 } } } } }
@@ -50,7 +50,7 @@ export async function startHarness(port: number): Promise<{ close: () => Promise
     sessionSecret: 'e'.repeat(32),
     oidc: new FakeOidc(),
     environments: EnvironmentRegistry.load(envFile),
-    roles: new RoleResolver({ defaults: { 'fr-admins': 'admin', 'fr-viewers': 'viewer' } }),
+    roles: new RoleResolver({ defaults: { 'fin-admins': 'admin', 'fin-viewers': 'viewer' } }),
     audit: new AuditLog(join(dir, 'audit.jsonl')),
     redirectUri: `http://127.0.0.1:${port}/auth/callback`,
     afterLoginRedirect: '/',

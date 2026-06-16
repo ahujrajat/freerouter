@@ -1,8 +1,8 @@
-# FreeRouter
+# FinRouter
 
 > **Embeddable BYOK LLM router with enterprise FinOps, sub-5ms overhead, and AES-256-GCM key security.**
 
-FreeRouter is a zero-runtime-dependency TypeScript library designed for enterprise applications that need to route LLM requests securely while users "Bring Their Own Key" (BYOK).
+FinRouter is a zero-runtime-dependency TypeScript library designed for enterprise applications that need to route LLM requests securely while users "Bring Their Own Key" (BYOK).
 
 It enforces military-grade key isolation, protects against prompt injection, and limits spend via a cascading FinOps engine—all with virtually zero latency overhead.
 
@@ -29,14 +29,14 @@ It enforces military-grade key isolation, protects against prompt injection, and
 - Mistral (`mistral`, `mixtral`, `codestral`)
 - Groq (`llama`, `gemma`)
 
-*(The shipped example config — [`freerouter.config.json`](freerouter.config.json) — pre-populates `blockedProviders` with `deepseek`, `qwen`, `zhipu`, `baichuan`, `minimax`. The block enforcement itself lives in [`src/providers/registry.ts`](src/providers/registry.ts) — any provider name passed via `RouterConfig.blockedProviders` is rejected at registration time. Edit the example config to lift the default deny-list, or remove specific entries.)*
+*(The shipped example config — [`finrouter.config.json`](finrouter.config.json) — pre-populates `blockedProviders` with `deepseek`, `qwen`, `zhipu`, `baichuan`, `minimax`. The block enforcement itself lives in [`src/providers/registry.ts`](src/providers/registry.ts) — any provider name passed via `RouterConfig.blockedProviders` is rejected at registration time. Edit the example config to lift the default deny-list, or remove specific entries.)*
 
 ---
 
 ## Installation
 
 ```bash
-npm install freerouter
+npm install finrouter
 ```
 
 ---
@@ -48,13 +48,13 @@ npm install freerouter
 You can create a router entirely in code, or load it from a config file (JSON, YAML, TOML).
 
 ```typescript
-import { FreeRouter } from 'freerouter'
+import { FinRouter } from 'finrouter'
 
 // From a JSON config file (calls init() automatically)
-const router = await FreeRouter.fromFile('./freerouter.config.json')
+const router = await FinRouter.fromFile('./finrouter.config.json')
 
 // Or programmatically
-const router = new FreeRouter({
+const router = new FinRouter({
   defaultProvider: 'google',
   promptInjectionGuard: true,
   masterKey: process.env.ROUTER_MASTER_KEY,
@@ -114,7 +114,7 @@ process.on('SIGTERM', async () => {
 
 ### Hierarchical Budgets
 
-FreeRouter evaluates budgets cascading from global → org → department → team → user **before** sending requests to the provider.
+FinRouter evaluates budgets cascading from global → org → department → team → user **before** sending requests to the provider.
 
 ```json
 {
@@ -161,10 +161,10 @@ await router.chat('user-1', req, {
 Persist spend records across restarts so budget counters survive process recycling.
 
 ```typescript
-import { FreeRouter } from 'freerouter'
-import { FileSpendStore } from 'freerouter/adapters'
+import { FinRouter } from 'finrouter'
+import { FileSpendStore } from 'finrouter/adapters'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   spendPersistence: {
     store: new FileSpendStore('./data/spend.json'),
     intervalMs: 60_000,      // flush every 60 s
@@ -180,7 +180,7 @@ await router.flushSpend()
 Implement the `SpendStore` interface to use any backend (Redis, Postgres, S3):
 
 ```typescript
-import type { SpendStore } from 'freerouter'
+import type { SpendStore } from 'finrouter'
 
 class RedisSpendStore implements SpendStore {
   async load() { /* ... */ }
@@ -214,7 +214,7 @@ const report = router.getChargebackReport(
 Route batch/background requests to the cheapest capable model automatically.
 
 ```typescript
-const router = new FreeRouter({
+const router = new FinRouter({
   costOptimization: {
     strategy: 'cheapest',          // 'cheapest' | 'balanced' | 'performance'
     candidateModels: [
@@ -238,7 +238,7 @@ Model selection is pure in-memory computation — **zero I/O, sub-millisecond ov
 
 ### Cache-Aware Cost Calculation
 
-When providers return `cachedPromptTokens` in the response (Anthropic prompt cache, OpenAI cached inputs), FreeRouter automatically applies the discounted rate:
+When providers return `cachedPromptTokens` in the response (Anthropic prompt cache, OpenAI cached inputs), FinRouter automatically applies the discounted rate:
 
 ```typescript
 // In ModelPricingEntry or PricingManifest:
@@ -262,10 +262,10 @@ Pure cost-based routing isn't always right. The legal team should always use Son
 Rules match on `userId` / `orgId` / `departmentId` / `teamId` / `metadata` / `priority` / model glob, and emit one of three actions: **pin** a specific model, override the **strategy** for the cost router, or **block** the request.
 
 ```typescript
-import { FreeRouter } from 'freerouter'
-import { FileRulesSource } from 'freerouter/adapters'
+import { FinRouter } from 'finrouter'
+import { FileRulesSource } from 'finrouter/adapters'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   costOptimization: {
     strategy: 'cheapest',
     candidateModels: ['gemini-2.0-flash-lite', 'gpt-4o-mini'],
@@ -308,7 +308,7 @@ await router.chat('alice', { model: 'gemini-2.0-flash', messages }, { teamId: 'l
 Drop a JSON file on disk; refresh on a schedule or on demand.
 
 ```typescript
-new FreeRouter({
+new FinRouter({
   rules: { mode: 'pin-wins', rules: [] },
   rulesRefresh: {
     source: new FileRulesSource('./config/rules.json'),
@@ -338,34 +338,34 @@ Keep model pricing and rate-limit caps current without restarts.
 
 ### Built-in Aggregators (LiteLLM / OpenRouter)
 
-LLM vendors don't publish public JSON pricing endpoints — their pricing pages are HTML. For operators who don't host their own manifest, FreeRouter ships convenience sources for the two community-maintained aggregators that do expose live JSON pricing for all major vendors:
+LLM vendors don't publish public JSON pricing endpoints — their pricing pages are HTML. For operators who don't host their own manifest, FinRouter ships convenience sources for the two community-maintained aggregators that do expose live JSON pricing for all major vendors:
 
 ```typescript
-import { liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
+import { liteLLMPricingSource, openRouterPricingSource } from 'finrouter'
 
 // LiteLLM — community-maintained JSON tracking ~hundreds of models across
 // OpenAI, Anthropic, Google, Mistral, Groq, Bedrock, Azure, and more.
-const router = new FreeRouter({
+const router = new FinRouter({
   pricingRefresh: { source: liteLLMPricingSource(), intervalMs: 3_600_000 },
 })
 
 // OpenRouter — live /v1/models API; no auth required for the public catalog.
-const router = new FreeRouter({
+const router = new FinRouter({
   pricingRefresh: { source: openRouterPricingSource(), intervalMs: 3_600_000 },
 })
 ```
 
-Both helpers internally use `HttpPricingSource` with a vendor-specific transformer (`transformLiteLLM` / `transformOpenRouter`) that normalises each format into the FreeRouter manifest shape — including unit conversion (both upstreams quote $/token; the transformers scale to $/1M to match FreeRouter's convention). The same two presets are exposed as one-click choices in the optional Configuration Manager's Fetch dialog.
+Both helpers internally use `HttpPricingSource` with a vendor-specific transformer (`transformLiteLLM` / `transformOpenRouter`) that normalises each format into the FinRouter manifest shape — including unit conversion (both upstreams quote $/token; the transformers scale to $/1M to match FinRouter's convention). The same two presets are exposed as one-click choices in the optional Configuration Manager's Fetch dialog.
 
 ### HTTP Pricing Source
 
-For self-hosted manifests already in the FreeRouter shape:
+For self-hosted manifests already in the FinRouter shape:
 
 ```typescript
-import { FreeRouter } from 'freerouter'
-import { HttpPricingSource } from 'freerouter/finops'
+import { FinRouter } from 'finrouter'
+import { HttpPricingSource } from 'finrouter/finops'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   pricingRefresh: {
     source: new HttpPricingSource('https://pricing.example.com/llm-rates.json', {
       bearerToken: process.env.PRICING_TOKEN,
@@ -383,9 +383,9 @@ await router.init() // fetches pricing immediately, then on schedule
 ### File-Based Pricing Source
 
 ```typescript
-import { FilePricingSource } from 'freerouter/adapters'
+import { FilePricingSource } from 'finrouter/adapters'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   pricingRefresh: {
     source: new FilePricingSource('./config/pricing.json'),
     intervalMs: 300_000,  // re-read file every 5 min (hot-swap without restart)
@@ -434,7 +434,7 @@ router.blockModel('openai', 'gpt-4o')
 
 // Test the block
 await router.chat('user-1', { model: 'gpt-4o', messages })
-// ↑ throws: [FreeRouter] Model "gpt-4o" has been removed from provider "openai"
+// ↑ throws: [FinRouter] Model "gpt-4o" has been removed from provider "openai"
 
 // Lift the hold
 router.unblockModel('openai', 'gpt-4o')
@@ -447,23 +447,23 @@ router.removeModel('openai', 'gpt-4o')
 
 ## Advanced Extensibility
 
-FreeRouter provides tree-shakeable sub-path exports for granular control over exactly what gets bundled into your application.
+FinRouter provides tree-shakeable sub-path exports for granular control over exactly what gets bundled into your application.
 
 ```typescript
 // Import only the FinOps engine
-import { SpendTracker, PolicyEngine, CostRouter } from 'freerouter/finops'
+import { SpendTracker, PolicyEngine, CostRouter } from 'finrouter/finops'
 
 // Import only the Security abstractions
-import { KeyManager, InputValidator } from 'freerouter/security'
+import { KeyManager, InputValidator } from 'finrouter/security'
 
 // Import Node.js adapters
-import { FileSpendStore, FilePricingSource, RedisKeyStore } from 'freerouter/adapters'
+import { FileSpendStore, FilePricingSource, RedisKeyStore } from 'finrouter/adapters'
 ```
 
 ### Custom Providers
 
 ```typescript
-import { BaseProvider } from 'freerouter/providers'
+import { BaseProvider } from 'finrouter/providers'
 
 class InternalProvider extends BaseProvider { ... }
 
@@ -474,7 +474,7 @@ router.registerProvider(new InternalProvider())
 
 ## GEPA Optimization Pipeline (opt-in)
 
-FreeRouter ships a complete integration with [GEPA's `optimize_anything`](https://gepa-ai.github.io/gepa/api/) — LLM-guided evolutionary optimization of text artifacts. Two distinct surfaces:
+FinRouter ships a complete integration with [GEPA's `optimize_anything`](https://gepa-ai.github.io/gepa/api/) — LLM-guided evolutionary optimization of text artifacts. Two distinct surfaces:
 
 | Surface | What it optimizes | When it runs | Latency impact |
 |---|---|---|---|
@@ -487,7 +487,7 @@ The TS side ships in the bundle; the optimizer itself runs in a Python sidecar s
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  FreeRouter (TS bundle, ~50KB)                                      │
+│  FinRouter (TS bundle, ~50KB)                                       │
 │                                                                     │
 │  request → validator → rules → ComplexityGate → cache               │
 │                       │           │              │                  │
@@ -540,10 +540,10 @@ The TS side ships in the bundle; the optimizer itself runs in a Python sidecar s
    cd gepa-sidecar
    pip install -e .
    python -m gepa_sidecar.optimize_config \
-     --seed       ../freerouter.config.json \
+     --seed       ../finrouter.config.json \
      --telemetry  ../telemetry/spend.jsonl \
      --pricing    ../pricing-snapshot.json \
-     --out        ../freerouter.config.optimized.json \
+     --out        ../finrouter.config.optimized.json \
      --budget     medium
    ```
    GEPA evolves `(adminRules, candidateModels, budget alertThresholds)` against the **real** TS routing logic — `scripts/score-candidate.ts` is invoked via subprocess so parity is guaranteed.
@@ -552,12 +552,12 @@ The TS side ships in the bundle; the optimizer itself runs in a Python sidecar s
    ```jsonc
    "shadowRouter": {
      "enabled": true,
-     "candidatePath": "./freerouter.config.optimized.json",
+     "candidatePath": "./finrouter.config.optimized.json",
      "pricingPath":   "./pricing-snapshot.json",
      "sinkPath":      "./shadow-decisions.jsonl"
    }
    ```
-   The shadow recomputes every routing decision in parallel and logs it; it never affects the live response. Compare `liveModel` vs `shadowModel` and cost deltas over a few hours before promoting the candidate to `freerouter.config.json`.
+   The shadow recomputes every routing decision in parallel and logs it; it never affects the live response. Compare `liveModel` vs `shadowModel` and cost deltas over a few hours before promoting the candidate to `finrouter.config.json`.
 
 ### Enable per-request prompt optimization
 
@@ -636,7 +636,7 @@ When neither `telemetryExport`, `shadowRouter`, nor `promptOptimization` are con
 
 ## Optional Configuration Manager
 
-For operators who'd rather click than hand-edit JSON, FreeRouter has an **optional, fully standalone** web configuration manager at [config-manager-web/](config-manager-web/). It is deliberately excluded from the published npm package (the `files: ["dist"]` allowlist in `package.json` ships only compiled router code), so the runtime has zero dependency on it — install, ignore, or delete it without consequence.
+For operators who'd rather click than hand-edit JSON, FinRouter has an **optional, fully standalone** web configuration manager at [config-manager-web/](config-manager-web/). It is deliberately excluded from the published npm package (the `files: ["dist"]` allowlist in `package.json` ships only compiled router code), so the runtime has zero dependency on it — install, ignore, or delete it without consequence.
 
 It is a deployed, multi-user app (Node/TypeScript + Fastify API, React/Vite UI) with OIDC SSO, role-based access control, multiple environments, optimistic-locked config editing, write-only BYOK (local-encrypted or Vault/AWS/Azure/GCP key managers), pricing fetch, an auto-optimization candidates panel, and an audit log.
 
@@ -660,7 +660,7 @@ npm run build              # build the SPA (web/dist) and the server
 WEB_DIST_DIR=./web/dist npm run --workspace server start
 ```
 
-The Configuration Manager is purely optional. You can still configure FreeRouter the conventional way — via code, JSON, YAML, or TOML — exactly as before; the web UI is a convenience for ops teams who own the live config files.
+The Configuration Manager is purely optional. You can still configure FinRouter the conventional way — via code, JSON, YAML, or TOML — exactly as before; the web UI is a convenience for ops teams who own the live config files.
 
 ---
 
@@ -702,10 +702,10 @@ Cross-cutting summary of every built-in security control. Each row points at the
 |---|---|
 | `blockedProviders` | Provider registration is rejected at startup for any name in this list — the provider class is never instantiated. |
 | Admin model block / unblock | `router.blockModel()` / `unblockModel()` for runtime compliance holds; reversible and preserves pricing history (unlike `removeModel()`). |
-| Default Chinese-provider deny-list | The shipped [`freerouter.config.json`](freerouter.config.json) pre-populates `blockedProviders` with DeepSeek, Qwen, Zhipu, Baichuan, Minimax. The registry enforces this list at registration time — blocked names cannot be re-registered without the operator first editing the config. |
+| Default Chinese-provider deny-list | The shipped [`finrouter.config.json`](finrouter.config.json) pre-populates `blockedProviders` with DeepSeek, Qwen, Zhipu, Baichuan, Minimax. The registry enforces this list at registration time — blocked names cannot be re-registered without the operator first editing the config. |
 | Structured audit trail | Every `key:set`, `key:rotated`, `key:deleted`, `key:expired`, `request:sent`, `request:blocked`, `budget:warning`, `budget:exceeded`, `forecast:at-risk`, `policy:violated`, `provider:added`, `provider:removed`, `model:added`, and `model:removed` event produces a typed `AuditEntry` (full list in `AuditAction`). Rule attribution flows through as a `ruleId` field on `request:sent` / `request:blocked` entries rather than its own event. Plug any sink via `AuditSink`. |
 | Config validator | `validateConfig()` runs on startup — rejects malformed budgets, invalid scope types, non-hex master keys, etc. before the router accepts any request. |
-| Configuration Manager auth | Web app (`config-manager-web`) uses OIDC SSO with role-based access control (`fr-admins` / `fr-viewers` groups). Session via httpOnly cookie; all write endpoints require the `admin` role. |
+| Configuration Manager auth | Web app (`config-manager-web`) uses OIDC SSO with role-based access control (`fin-admins` / `fin-viewers` groups). Session via httpOnly cookie; all write endpoints require the `admin` role. |
 | BYOK keystore security | Config Manager (`config-manager-web`) accepts keys write-only via the BYOK API — the secret is never returned after submission. Stored via the configured key backend (local AES-256-GCM, or Vault/AWS/Azure/GCP). |
 | TLS verification (Config Manager) | Pricing fetch in `config-manager-web` delegates to the server's `HttpPricingSource` (Node `https` module with default TLS verification). |
 

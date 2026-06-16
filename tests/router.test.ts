@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 import type { BudgetPolicy, ChatResponse } from '../src/types.js'
 
 // ─── Mock fetch for provider HTTP calls ──────────────────────────────────────
@@ -16,13 +16,13 @@ function makeFetchMock(content: string) {
   })
 }
 
-describe('FreeRouter — integration', () => {
+describe('FinRouter — integration', () => {
   const masterKey = Buffer.alloc(32, 'b').toString('hex')
-  let router: FreeRouter
+  let router: FinRouter
   let fetchMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    router = new FreeRouter({
+    router = new FinRouter({
       masterKey,
       audit: { enabled: false },
     })
@@ -86,7 +86,7 @@ describe('FreeRouter — integration', () => {
   })
 
   it('silently skips blocked built-in providers', () => {
-    const locked = new FreeRouter({
+    const locked = new FinRouter({
       masterKey,
       blockedProviders: ['openai'],
       audit: { enabled: false },
@@ -96,7 +96,7 @@ describe('FreeRouter — integration', () => {
   })
 
   it('blocks prompt injection', async () => {
-    router = new FreeRouter({ masterKey, promptInjectionGuard: true, audit: { enabled: false } })
+    router = new FinRouter({ masterKey, promptInjectionGuard: true, audit: { enabled: false } })
     router.setKey('user1', 'google', 'fake-key')
     await expect(
       router.chat('user1', {
@@ -107,7 +107,7 @@ describe('FreeRouter — integration', () => {
   })
 
   it('disables providers via config.providers toggle', () => {
-    const r = new FreeRouter({
+    const r = new FinRouter({
       masterKey,
       audit: { enabled: false },
       providers: { anthropic: { enabled: false }, groq: { enabled: false } },
@@ -120,7 +120,7 @@ describe('FreeRouter — integration', () => {
 
   it('lazy-loads provider only on first use', async () => {
     // Google should not be instantiated yet (lazy factory)
-    const r = new FreeRouter({ masterKey, audit: { enabled: false } })
+    const r = new FinRouter({ masterKey, audit: { enabled: false } })
     // List shows available factories, not just instantiated ones
     expect(r.listProviders()).toContain('google')
     // Only when we actually route does it get instantiated

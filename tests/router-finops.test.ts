@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 import { MemorySpendStore } from '../src/finops/spend-store.js'
 import { FileSpendStore } from '../src/adapters/file-spend-store.js'
 import { StaticPricingSource } from '../src/finops/pricing-source.js'
@@ -57,7 +57,7 @@ describe('Spend persistence', () => {
     }
     await store.save([record])
 
-    const router = new FreeRouter({ masterKey, audit: { enabled: false }, spendPersistence: { store } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false }, spendPersistence: { store } })
     await router.init()
 
     const summary = router.getSpend({ type: 'user', userId: 'u1' }, 'daily')
@@ -68,7 +68,7 @@ describe('Spend persistence', () => {
   it('flushSpend() saves current records to store', async () => {
     const store = new MemorySpendStore()
     vi.stubGlobal('fetch', makeGeminiMock())
-    const router = new FreeRouter({ masterKey, audit: { enabled: false }, spendPersistence: { store } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false }, spendPersistence: { store } })
     await router.init()
 
     router.setKey('u1', 'google', 'key')
@@ -81,13 +81,13 @@ describe('Spend persistence', () => {
   })
 
   it('flushSpend() is a no-op when no store is configured', async () => {
-    const router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false } })
     await expect(router.flushSpend()).resolves.toBeUndefined()
   })
 
   it('shutdown() flushes records and clears the flush interval', async () => {
     const store = new MemorySpendStore()
-    const router = new FreeRouter({
+    const router = new FinRouter({
       masterKey, audit: { enabled: false },
       spendPersistence: { store, intervalMs: 60_000, autoFlushOnExit: false },
     })
@@ -116,7 +116,7 @@ describe('Spend persistence', () => {
     }
     await store.save([record])
 
-    const router = new FreeRouter({ masterKey, audit: { enabled: false }, spendPersistence: { store } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false }, spendPersistence: { store } })
     await router.init()
     await router.init() // second call — must be no-op
 
@@ -142,7 +142,7 @@ describe('Spend persistence', () => {
 
       // First router instance — make a request then flush
       const store1 = new FileSpendStore(filePath)
-      const router1 = new FreeRouter({
+      const router1 = new FinRouter({
         masterKey, audit: { enabled: false },
         spendPersistence: { store: store1, autoFlushOnExit: false },
       })
@@ -153,7 +153,7 @@ describe('Spend persistence', () => {
 
       // Second router instance — loads from file, should see prior spend
       const store2 = new FileSpendStore(filePath)
-      const router2 = new FreeRouter({
+      const router2 = new FinRouter({
         masterKey, audit: { enabled: false },
         spendPersistence: { store: store2, autoFlushOnExit: false },
       })
@@ -174,7 +174,7 @@ describe('refreshPricing()', () => {
       google: { 'gemini-2.0-flash': { input: 99.0, output: 99.0 } }, // artificially high
     })
 
-    const router = new FreeRouter({
+    const router = new FinRouter({
       masterKey, audit: { enabled: false },
       pricingRefresh: { source: pricingSource },
     })
@@ -189,7 +189,7 @@ describe('refreshPricing()', () => {
   })
 
   it('is a no-op when pricingRefresh is not configured', async () => {
-    const router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false } })
     await expect(router.refreshPricing()).resolves.toBeUndefined()
   })
 
@@ -199,7 +199,7 @@ describe('refreshPricing()', () => {
       openai: { 'gpt-4o': { input: 2.50, output: 10.0 }, 'gpt-4o-mini': { input: 0.15, output: 0.60 } },
       google: { 'gemini-2.0-flash': { input: 0.10, output: 0.40 } },
     })
-    const router = new FreeRouter({
+    const router = new FinRouter({
       masterKey, audit: { enabled: false },
       pricingRefresh: { source },
       onPricingRefreshed: onRefreshed,
@@ -212,7 +212,7 @@ describe('refreshPricing()', () => {
   it('does not throw when source.fetch() rejects — logs to stderr instead', async () => {
     const failingSource = { fetch: async () => { throw new Error('network error') } }
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-    const router = new FreeRouter({
+    const router = new FinRouter({
       masterKey, audit: { enabled: false },
       pricingRefresh: { source: failingSource },
     })
@@ -227,7 +227,7 @@ describe('refreshPricing()', () => {
 describe('setPricingOverride()', () => {
   it('overrides pricing for a specific model', async () => {
     vi.stubGlobal('fetch', makeGeminiMock())
-    const router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false } })
 
     // Set an artificially high price
     router.setPricingOverride('google', 'gemini-2.0-flash', { input: 50.0, output: 50.0 })
@@ -241,7 +241,7 @@ describe('setPricingOverride()', () => {
   })
 
   it('supports cachedInput pricing', () => {
-    const router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false } })
     // Should not throw with optional cachedInput
     expect(() =>
       router.setPricingOverride('anthropic', 'claude-3-5-sonnet-20241022', {
@@ -254,11 +254,11 @@ describe('setPricingOverride()', () => {
 // ── blockModel / unblockModel ───────────────────────────────────────────────
 
 describe('blockModel() / unblockModel()', () => {
-  let router: FreeRouter
+  let router: FinRouter
 
   beforeEach(() => {
     vi.stubGlobal('fetch', makeGeminiMock())
-    router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    router = new FinRouter({ masterKey, audit: { enabled: false } })
     router.setKey('u1', 'google', 'key')
   })
 
@@ -308,7 +308,7 @@ describe('Cost optimization — router integration', () => {
     const expensive = new MockProvider('expensive', 10.0) // $10/1M
     const cheap     = new MockProvider('cheap', 0.15)     // $0.15/1M
 
-    const router = new FreeRouter({
+    const router = new FinRouter({
       masterKey, audit: { enabled: false },
       costOptimization: {
         strategy: 'cheapest',
@@ -333,7 +333,7 @@ describe('Cost optimization — router integration', () => {
     const expensive = new MockProvider('expensive2', 10.0)
     const cheap2    = new MockProvider('cheap2', 0.15)
 
-    const router = new FreeRouter({
+    const router = new FinRouter({
       masterKey, audit: { enabled: false },
       costOptimization: {
         strategy: 'cheapest',
@@ -359,7 +359,7 @@ describe('Cost optimization — router integration', () => {
     const expensive = new MockProvider('pricey', 10.0)
     const cheap3    = new MockProvider('budget', 0.15)
 
-    const router = new FreeRouter({
+    const router = new FinRouter({
       masterKey, audit: { enabled: false },
       costOptimization: {
         strategy: 'cheapest',
@@ -388,7 +388,7 @@ describe('Cost optimization — router integration', () => {
 
 describe("Budget policy lifecycle", () => {
   it("addBudgetPolicy + removeBudgetPolicy round-trip", () => {
-    const router = new FreeRouter({ masterKey })
+    const router = new FinRouter({ masterKey })
     expect(router.listBudgetPolicies()).toHaveLength(0)
 
     router.addBudgetPolicy({
@@ -406,14 +406,14 @@ describe("Budget policy lifecycle", () => {
   })
 
   it("removeBudgetPolicy returns false for unknown id", () => {
-    const router = new FreeRouter({ masterKey })
+    const router = new FinRouter({ masterKey })
     expect(router.removeBudgetPolicy("does-not-exist")).toBe(false)
   })
 
   it("removing a runtime-added policy prevents it from blocking subsequent requests", async () => {
     // inputRate=100 (USD/1M) so the rounded pre-flight estimate is > 0 and trips the zero cap.
     const provider = new MockProvider("p", 100)
-    const router = new FreeRouter({ masterKey })
+    const router = new FinRouter({ masterKey })
     router.registerProvider(provider)
     router.setKey("u1", "p", "k")
 

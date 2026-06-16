@@ -1,12 +1,12 @@
 /**
- * FreeRouter — Public API barrel
+ * FinRouter — Public API barrel
  *
- * Import everything from 'freerouter'.
- * Sub-path imports available: 'freerouter/providers', 'freerouter/security', 'freerouter/finops', 'freerouter/adapters'
+ * Import everything from 'finrouter'.
+ * Sub-path imports available: 'finrouter/providers', 'finrouter/security', 'finrouter/finops', 'finrouter/adapters'
  */
 
 // Main class
-export { FreeRouter } from './router.js'
+export { FinRouter } from './router.js'
 
 // Config
 export type {
@@ -24,7 +24,7 @@ export { validateConfig } from './config-validator.js'
 export type { ConfigValidationResult } from './config-validator.js'
 
 // Plugin
-export type { FreeRouterPlugin } from './plugin.js'
+export type { FinRouterPlugin } from './plugin.js'
 
 // All shared types
 export type {

@@ -11,7 +11,7 @@ it('shows all section nav items and switches to Rate Limit', async () => {
     if (url.endsWith('/api/env')) return new Response(JSON.stringify([{ id: 'dev', label: 'Development', role: 'admin' }]), { status: 200 })
     return new Response('{}', { status: 200 })
   }))
-  render(<AppShell me={{ subject: 'u', name: 'Ada', groups: ['fr-admins'] }} />)
+  render(<AppShell me={{ subject: 'u', name: 'Ada', groups: ['fin-admins'] }} />)
   for (const label of ['General', 'Providers', 'Rate Limit', 'Budgets', 'Rules', 'Pricing Overrides', 'Optimization', 'Env Vars', 'BYOK Keys', 'Candidates', 'Audit', 'Reporting']) {
     expect(await screen.findByRole('link', { name: label })).toBeInTheDocument()
   }

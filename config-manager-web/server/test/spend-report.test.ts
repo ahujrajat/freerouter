@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readSpendRecords, buildReport } from '../src/reporting/spend-report.js'
-import type { SpendRecord } from 'freerouter'
+import type { SpendRecord } from 'finrouter'
 
 function makeRecord(overrides: Partial<SpendRecord> = {}): SpendRecord {
   return {

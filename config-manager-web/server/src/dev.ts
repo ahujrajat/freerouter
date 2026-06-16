@@ -16,7 +16,7 @@ import { AuditLog } from './store/audit-log.js'
 import { KeyBackendRegistry } from './byok/registry.js'
 import { LocalKeyBackend } from './byok/local-backend.js'
 import { LibraryPricingFetcher } from './pricing/pricing-fetcher.js'
-import { liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
+import { liteLLMPricingSource, openRouterPricingSource } from 'finrouter'
 import type { AppDeps } from './app.js'
 import type { OidcProvider, AuthRequest, Claims } from './auth/oidc.js'
 

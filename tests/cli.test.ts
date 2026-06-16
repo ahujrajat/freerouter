@@ -116,13 +116,13 @@ describe('CLI — rotate-key', () => {
     expect(result.stderr).toContain('--provider')
   })
 
-  it('exits 1 when FREEROUTER_NEW_KEY env var is not set', async () => {
+  it('exits 1 when FINROUTER_NEW_KEY env var is not set', async () => {
     const result = await runCli(
       ['rotate-key', '--user', 'alice', '--provider', 'openai'],
-      { FREEROUTER_NEW_KEY: '' },
+      { FINROUTER_NEW_KEY: '' },
     )
     expect(result.code).toBe(1)
-    expect(result.stderr).toContain('FREEROUTER_NEW_KEY')
+    expect(result.stderr).toContain('FINROUTER_NEW_KEY')
   })
 })
 

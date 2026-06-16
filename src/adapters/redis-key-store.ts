@@ -42,7 +42,7 @@ function deserialize(raw: string): StoredKey {
  * Drop-in replacement for the default in-memory store:
  *
  *   const store = new RedisKeyStore(redisClient)
- *   const router = new FreeRouter({ store })  // pass via KeyManager opts
+ *   const router = new FinRouter({ store })  // pass via KeyManager opts
  */
 export class RedisKeyStore implements KeyStore {
   private readonly prefix: string
@@ -51,7 +51,7 @@ export class RedisKeyStore implements KeyStore {
     private readonly client: RedisClientLike,
     opts: { keyPrefix?: string; ttlSeconds?: number } = {},
   ) {
-    this.prefix = opts.keyPrefix ?? 'freerouter:key:'
+    this.prefix = opts.keyPrefix ?? 'finrouter:key:'
   }
 
   private redisKey(userId: string, provider: string): string {
@@ -61,7 +61,7 @@ export class RedisKeyStore implements KeyStore {
   set(userId: string, provider: string, blob: StoredKey): void {
     // Fire-and-forget — surface errors as unhandled rejections
     this.client.set(this.redisKey(userId, provider), serialize(blob)).catch((err: unknown) => {
-      process.stderr.write(`[FreeRouter/RedisKeyStore] set error: ${String(err)}\n`)
+      process.stderr.write(`[FinRouter/RedisKeyStore] set error: ${String(err)}\n`)
     })
   }
 
@@ -85,7 +85,7 @@ export class RedisKeyStore implements KeyStore {
 
   delete(userId: string, provider: string): void {
     this.client.del(this.redisKey(userId, provider)).catch((err: unknown) => {
-      process.stderr.write(`[FreeRouter/RedisKeyStore] delete error: ${String(err)}\n`)
+      process.stderr.write(`[FinRouter/RedisKeyStore] delete error: ${String(err)}\n`)
     })
   }
 }

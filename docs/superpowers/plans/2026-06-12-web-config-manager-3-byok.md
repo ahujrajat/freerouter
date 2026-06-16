@@ -347,7 +347,7 @@ import { createCipheriv, randomBytes } from 'node:crypto'
 import type { KeyBackend, StoredKey } from './types.js'
 
 /** Encrypts secrets at rest with AES-256-GCM. The web manager never decrypts —
- *  it is write-only; decryption belongs to the FreeRouter runtime. */
+ *  it is write-only; decryption belongs to the FinRouter runtime. */
 export class LocalKeyBackend implements KeyBackend {
   readonly name = 'local' as const
   private readonly key: Buffer
@@ -934,7 +934,7 @@ describe('byok routes', () => {
   })
 
   it('forbids a viewer from setting a key (403) and 401 unauthenticated', async () => {
-    const viewer = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const viewer = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fin-viewers'] } })
     const vcookie = await login(viewer)
     expect((await viewer.inject({ method: 'POST', url: '/api/env/dev/byok/x', headers: { cookie: vcookie }, payload: { backend: 'local', secret: 's' } })).statusCode).toBe(403)
     await viewer.close()

@@ -198,7 +198,7 @@ describe('ReplayScorer — aggregates', () => {
   })
 })
 
-// ── Parity with live FreeRouter ────────────────────────────────────────────
+// ── Parity with live FinRouter ────────────────────────────────────────────
 //
 // We don't replay end-to-end against a live router (that would require mock
 // providers and a full chat() loop). Instead, we exercise the same code paths
@@ -209,7 +209,7 @@ describe('ReplayScorer — aggregates', () => {
 // of those components produces the same decisions as `router.applyRuleAndCost`
 // + `policyEngine.evaluate`.
 
-describe('ReplayScorer — composition matches FreeRouter.applyRuleAndCost', () => {
+describe('ReplayScorer — composition matches FinRouter.applyRuleAndCost', () => {
   it('rule pin under pin-wins mode bypasses cost router', () => {
     const scorer = new ReplayScorer({
       rules: {

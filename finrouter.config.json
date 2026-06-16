@@ -1,6 +1,6 @@
 {
-  "$schema": "https://freerouter.dev/config-schema.json",
-  "$comment": "FreeRouter configuration — all fields are optional except where noted",
+  "$schema": "https://finrouter.dev/config-schema.json",
+  "$comment": "FinRouter configuration — all fields are optional except where noted",
   "defaultProvider": "google",
   "defaultModel": "gemini-2.0-flash",
   "promptInjectionGuard": true,

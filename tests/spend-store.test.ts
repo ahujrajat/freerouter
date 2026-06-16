@@ -57,7 +57,7 @@ describe('FileSpendStore', () => {
   let filePath: string
 
   beforeEach(async () => {
-    dir = join(tmpdir(), `freerouter-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    dir = join(tmpdir(), `finrouter-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
     await mkdir(dir, { recursive: true })
     filePath = join(dir, 'spend.json')
   })

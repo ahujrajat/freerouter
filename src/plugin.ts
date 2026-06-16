@@ -1,11 +1,11 @@
-import type { FreeRouter } from './router.js'
+import type { FinRouter } from './router.js'
 
 /**
- * Plugin interface for extending FreeRouter with reusable capabilities.
+ * Plugin interface for extending FinRouter with reusable capabilities.
  * Install via router.use(plugin).
  */
-export interface FreeRouterPlugin {
+export interface FinRouterPlugin {
   /** Unique name — duplicate installs are silently skipped */
   name: string
-  install(router: FreeRouter): void
+  install(router: FinRouter): void
 }

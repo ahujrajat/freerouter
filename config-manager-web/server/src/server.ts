@@ -12,7 +12,7 @@ import { VaultClient } from './byok/clients/vault-client.js'
 import type { BackendName, KeyBackend } from './byok/types.js'
 import { LibraryPricingFetcher } from './pricing/pricing-fetcher.js'
 import { HttpSidecarClient } from './optimization/sidecar-client.js'
-import { liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
+import { liteLLMPricingSource, openRouterPricingSource } from 'finrouter'
 import { buildDevDeps } from './dev.js'
 
 async function main(): Promise<void> {

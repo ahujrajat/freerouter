@@ -34,7 +34,7 @@ describe('candidates routes', () => {
   })
 
   it('forbids a viewer from optimizing (403)', async () => {
-    const { app } = await buildTestApp({ withDir: true, claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const { app } = await buildTestApp({ withDir: true, claims: { sub: 'v', name: 'V', groups: ['fin-viewers'] } })
     const cookie = await login(app)
     const res = await app.inject({ method: 'POST', url: '/api/env/dev/candidates/x/optimize', headers: { cookie }, payload: {} })
     expect(res.statusCode).toBe(403)
@@ -55,7 +55,7 @@ describe('candidates routes', () => {
   })
 
   it('forbids a viewer from deleting a candidate (403)', async () => {
-    const { app } = await buildTestApp({ withDir: true, claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const { app } = await buildTestApp({ withDir: true, claims: { sub: 'v', name: 'V', groups: ['fin-viewers'] } })
     const cookie = await login(app)
     const res = await app.inject({ method: 'DELETE', url: '/api/env/dev/candidates/x', headers: { cookie } })
     expect(res.statusCode).toBe(403)

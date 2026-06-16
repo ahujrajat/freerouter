@@ -1,4 +1,4 @@
-import type { FreeRouter } from '../router.js'
+import type { FinRouter } from '../router.js'
 import type { RequestContext } from '../types.js'
 
 /**
@@ -111,7 +111,7 @@ function setSSEHeaders(res: OutgoingResponse): void {
 }
 
 /**
- * Create an OpenAI-compatible request handler that delegates to FreeRouter.
+ * Create an OpenAI-compatible request handler that delegates to FinRouter.
  *
  * Usage (Express):
  *   app.post('/v1/chat/completions', createMiddleware(router))
@@ -119,7 +119,7 @@ function setSSEHeaders(res: OutgoingResponse): void {
  * Usage (Fastify):
  *   fastify.post('/v1/chat/completions', createMiddleware(router))
  */
-export function createMiddleware(router: FreeRouter, opts: MiddlewareOptions = {}): RequestHandler {
+export function createMiddleware(router: FinRouter, opts: MiddlewareOptions = {}): RequestHandler {
   const extractUserId = opts.extractUserId ?? ((req: IncomingRequest) => {
     const body = req.body
     if (isObject(body) && typeof body['user'] === 'string') return body['user']

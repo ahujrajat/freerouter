@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add the three integration features that complete config-manager parity: (1) **server-side pricing fetch** from LiteLLM/OpenRouter (reusing `freerouter`'s pricing sources) feeding a "Fetch" dialog in the Pricing Overrides section; (2) an **auto-optimization candidates** panel that lists candidates and triggers the GEPA sidecar `/optimize` server-side, writing the optimized-prompt store and updating candidate status; (3) an **Audit viewer** of the admin audit log.
+**Goal:** Add the three integration features that complete config-manager parity: (1) **server-side pricing fetch** from LiteLLM/OpenRouter (reusing `finrouter`'s pricing sources) feeding a "Fetch" dialog in the Pricing Overrides section; (2) an **auto-optimization candidates** panel that lists candidates and triggers the GEPA sidecar `/optimize` server-side, writing the optimized-prompt store and updating candidate status; (3) an **Audit viewer** of the admin audit log.
 
 **Architecture:** Pricing fetch and sidecar optimization run on the server (keeps source URLs / sidecar token off the browser, avoids CORS). Both external dependencies sit behind injectable interfaces — `PricingFetcher` and `SidecarClient` — so routes are unit-tested with fakes (real network is not exercised in CI). Candidates/optimized data reuse the per-environment files from Plan 1 (`env.paths.candidates`, `env.paths.optimizedStore`) via `JsonFileStore` (array-normalized like rules). The audit route reads the existing `AuditLog`. Each new route plugin registers its **own** auth `preHandler` (Fastify hooks are plugin-scoped — established in Plan 3).
 
-**Tech Stack:** Same as Plans 1–3. New external deps: none (pricing uses `freerouter`'s `liteLLMPricingSource`/`openRouterPricingSource`; sidecar uses `fetch`).
+**Tech Stack:** Same as Plans 1–3. New external deps: none (pricing uses `finrouter`'s `liteLLMPricingSource`/`openRouterPricingSource`; sidecar uses `fetch`).
 
 **Prerequisite:** Plans 1–3 merged and green (server 69, web 27). Work from `config-manager-web/`. Run server commands from `server/`, web from `web/`.
 
@@ -122,7 +122,7 @@ git commit -m "feat(web-config): GEPA sidecar URL/token server config"
 ```ts
 import { describe, it, expect } from 'vitest'
 import { LibraryPricingFetcher } from '../src/pricing/pricing-fetcher.js'
-import type { PricingSource } from 'freerouter'
+import type { PricingSource } from 'finrouter'
 
 function fakeSource(manifest: Record<string, unknown>): PricingSource {
   return { fetch: async () => manifest as never }
@@ -152,7 +152,7 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Create `config-manager-web/server/src/pricing/pricing-fetcher.ts`**
 
 ```ts
-import type { PricingManifest, PricingSource } from 'freerouter'
+import type { PricingManifest, PricingSource } from 'finrouter'
 
 export interface PricingFetcher {
   fetch(source: string): Promise<PricingManifest>
@@ -160,7 +160,7 @@ export interface PricingFetcher {
 
 export type SourceFactory = () => PricingSource
 
-/** Fetches pricing via injectable source factories (real ones wrap freerouter's
+/** Fetches pricing via injectable source factories (real ones wrap finrouter's
  *  liteLLMPricingSource/openRouterPricingSource; tests inject fakes). */
 export class LibraryPricingFetcher implements PricingFetcher {
   constructor(private readonly sources: Record<string, SourceFactory>) {}
@@ -395,7 +395,7 @@ describe('candidates routes', () => {
   })
 
   it('forbids a viewer from optimizing (403)', async () => {
-    const { app } = await buildTestApp({ withDir: true, claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const { app } = await buildTestApp({ withDir: true, claims: { sub: 'v', name: 'V', groups: ['fin-viewers'] } })
     const cookie = await login(app)
     const res = await app.inject({ method: 'POST', url: '/api/env/dev/candidates/x/optimize', headers: { cookie }, payload: {} })
     expect(res.statusCode).toBe(403)
@@ -1035,7 +1035,7 @@ In `config-manager-web/server/src/server.ts`, construct the real `pricingFetcher
 ```ts
 import { LibraryPricingFetcher } from './pricing/pricing-fetcher.js'
 import { HttpSidecarClient } from './optimization/sidecar-client.js'
-import { liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
+import { liteLLMPricingSource, openRouterPricingSource } from 'finrouter'
 // ...
   const pricingFetcher = new LibraryPricingFetcher({
     litellm: () => liteLLMPricingSource(),
@@ -1058,8 +1058,8 @@ git commit -m "feat(web-config): wire Candidates + Audit nav; real pricing fetch
 
 ## Self-Review Notes (for the implementer)
 
-- **Spec coverage (Plan-4 portion):** server-side pricing fetch reusing `freerouter` sources, filtered to enabled providers (Task 2); auto-optimization candidates list + sidecar-driven optimize writing the optimized store + flipping status (Task 3); audit view route (Task 4); Pricing fetch dialog (Task 5); Candidates section (Task 6); Audit section (Task 7); nav + real wiring (Task 8). This completes config-manager feature parity; only e2e + Python-tool deletion (Plan 5) remain.
-- **Injectable externals:** `PricingFetcher` and `SidecarClient` are interfaces injected via `AppDeps`; tests use fakes (no network). The real implementations (`LibraryPricingFetcher` over `freerouter` sources; `HttpSidecarClient` over `fetch`) are wired only in `server.ts` (Task 8 Step 5).
+- **Spec coverage (Plan-4 portion):** server-side pricing fetch reusing `finrouter` sources, filtered to enabled providers (Task 2); auto-optimization candidates list + sidecar-driven optimize writing the optimized store + flipping status (Task 3); audit view route (Task 4); Pricing fetch dialog (Task 5); Candidates section (Task 6); Audit section (Task 7); nav + real wiring (Task 8). This completes config-manager feature parity; only e2e + Python-tool deletion (Plan 5) remain.
+- **Injectable externals:** `PricingFetcher` and `SidecarClient` are interfaces injected via `AppDeps`; tests use fakes (no network). The real implementations (`LibraryPricingFetcher` over `finrouter` sources; `HttpSidecarClient` over `fetch`) are wired only in `server.ts` (Task 8 Step 5).
 - **Fastify scope:** each new route plugin (`pricing-routes`, `candidates-routes`, `audit-routes`) declares its OWN `/api` auth `preHandler` — plugin hooks don't cross plugin boundaries (established in Plan 3). Each new route file's 401-unauthenticated test guards this.
 - **Array-file handling:** candidates and optimized stores are JSON arrays; `JsonFileStore` defaults an absent file to `{}`, so reads go through a `readArray` normalizer (returns `[]` for a non-array), matching the rules-resource pattern from Plan 2. Writes use the store's version (read-then-write within the request) — acceptable for these admin-triggered, low-concurrency operations.
 - **Security:** `pricing-fetch` and `candidates` GET require any role; `candidates optimize` requires admin (viewer 403); audit GET requires any authenticated role. The sidecar token and pricing source URLs stay server-side. Optimize is audited (`candidate:optimize`).

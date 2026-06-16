@@ -5,7 +5,7 @@ import type { SpendRecord } from '../types.js'
  *
  * Distinct from `SpendStore`: the store is a snapshot of the *current*
  * in-memory window (subject to pruning); the sink is a forward-only
- * stream of every record FreeRouter has seen. Sinks feed offline
+ * stream of every record FinRouter has seen. Sinks feed offline
  * pipelines (analytics, GEPA optimizer, lakehouse loaders) that need
  * a complete history.
  *

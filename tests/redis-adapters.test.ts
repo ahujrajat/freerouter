@@ -140,7 +140,7 @@ describe('RedisRateLimiter', () => {
     const client = makeMockRedisClient()
     const limiter = new RedisRateLimiter(client, { requestsPerMinute: 5, burstAllowance: 0 })
     // Simulate 6 existing requests in Redis
-    client.store.set('freerouter:rl:req:user1', '6')
+    client.store.set('finrouter:rl:req:user1', '6')
     const result = await limiter.checkAsync('user1', 0)
     expect(result.allowed).toBe(false)
     expect(result.reason).toContain('Rate limit exceeded')

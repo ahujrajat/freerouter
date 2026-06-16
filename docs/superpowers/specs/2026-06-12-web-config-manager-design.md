@@ -5,10 +5,10 @@ Status: Approved (pending spec review)
 
 ## Problem
 
-FreeRouter ships with an optional, standalone operator tool — `config-manager/`
+FinRouter ships with an optional, standalone operator tool — `config-manager/`
 — a ~2,100-line Tkinter desktop app (plus stdlib-only Python modules:
 `config_io`, `byok_io`, `pricing_fetcher`, `candidates_io`, `validators`,
-`auth`, `prefs`). It edits a single FreeRouter deployment's `config`, `rules`,
+`auth`, `prefs`). It edits a single FinRouter deployment's `config`, `rules`,
 and `.env` files on the local filesystem, gated by a one-time admin key. It is
 not published in the npm package.
 
@@ -30,12 +30,12 @@ web manager is implemented, tested, and verified working, the Python
 - Secure BYOK handling: write-only encrypted local storage **plus** pluggable
   external key-manager backends.
 - Accenture light visual theme.
-- Reuse FreeRouter's own validation, pricing sources, and optimization types
+- Reuse FinRouter's own validation, pricing sources, and optimization types
   rather than reimplementing them.
 
 **Non-goals**
-- Editing FreeRouter source or runtime behavior.
-- A database-backed config store (we keep the file model FreeRouter consumes).
+- Editing FinRouter source or runtime behavior.
+- A database-backed config store (we keep the file model FinRouter consumes).
 - Revealing stored secrets through the browser.
 - Backward compatibility with the Python tool's admin-key auth (replaced by
   OIDC).
@@ -43,7 +43,7 @@ web manager is implemented, tested, and verified working, the Python
 ## Tech stack
 
 - **Backend:** Node + TypeScript, **Fastify** (swappable). Depends on the
-  published `freerouter` package for `validateConfig` / `validateConfigKeys`,
+  published `finrouter` package for `validateConfig` / `validateConfigKeys`,
   `HttpPricingSource` + LiteLLM/OpenRouter transforms, and the
   optimization/optimized-store types.
 - **Frontend:** React + Vite + TypeScript SPA.
@@ -70,8 +70,8 @@ Neither directory is included in the npm package (`package.json` publishes only
 browser ──HTTPS──> Fastify API (session-guarded, RBAC)
                      ├─ OIDC auth (openid-client)
                      ├─ Environment repo (per-env files, optimistic lock)
-                     ├─ Validation  → freerouter validateConfig/validateConfigKeys
-                     ├─ Pricing fetch → freerouter HttpPricingSource (LiteLLM/OpenRouter)
+                     ├─ Validation  → finrouter validateConfig/validateConfigKeys
+                     ├─ Pricing fetch → finrouter HttpPricingSource (LiteLLM/OpenRouter)
                      ├─ BYOK backends (local-encrypted | vault | aws | azure | gcp)
                      ├─ Candidates → GEPA sidecar /optimize (server-side)
                      └─ Audit log (append-only)
@@ -110,12 +110,12 @@ and pricing-source calls never reach the browser and CORS is avoided.
     "id": "prod",
     "label": "Production",
     "paths": {
-      "config": "/etc/freerouter/prod/freerouter.config.json",
-      "rules": "/etc/freerouter/prod/freerouter.rules.json",
-      "env": "/etc/freerouter/prod/.env",
-      "pricing": "/etc/freerouter/prod/pricing.json",
-      "optimizedStore": "/etc/freerouter/prod/optimized-prompts.json",
-      "candidates": "/etc/freerouter/prod/candidates.json"
+      "config": "/etc/finrouter/prod/finrouter.config.json",
+      "rules": "/etc/finrouter/prod/finrouter.rules.json",
+      "env": "/etc/finrouter/prod/.env",
+      "pricing": "/etc/finrouter/prod/pricing.json",
+      "optimizedStore": "/etc/finrouter/prod/optimized-prompts.json",
+      "candidates": "/etc/finrouter/prod/candidates.json"
     }
   }
   ```
@@ -134,7 +134,7 @@ and pricing-source calls never reach the browser and CORS is avoided.
 
 ### 5. Validation
 
-- Reuse `freerouter`'s exported `validateConfig` and `validateConfigKeys` for
+- Reuse `finrouter`'s exported `validateConfig` and `validateConfigKeys` for
   config; reuse the rules/budget validation shapes. Add web-specific request
   schema validation (Fastify JSON schema) at the API boundary.
 - Validation failures return **422** with field-level messages the UI renders
@@ -142,7 +142,7 @@ and pricing-source calls never reach the browser and CORS is avoided.
 
 ### 6. Pricing fetch
 
-- Server-side endpoint that uses `freerouter`'s `HttpPricingSource` with the
+- Server-side endpoint that uses `finrouter`'s `HttpPricingSource` with the
   LiteLLM and OpenRouter transforms (already exported by the library) to fetch a
   pricing manifest, filtered to configured providers, and returns it for the
   Pricing Overrides view to apply. Mirrors the Python `pricing_fetcher` behavior
@@ -169,7 +169,7 @@ and pricing-source calls never reach the browser and CORS is avoided.
     reference resolves.
 - Each provider's BYOK entry records `{ provider, backend, ref, isSet, last4? }`.
   The API exposes set / rotate / delete / describe only — never a read of the
-  secret. Admin-only. Runtime resolution of the key remains FreeRouter's concern;
+  secret. Admin-only. Runtime resolution of the key remains FinRouter's concern;
   the manager records and validates the reference.
 
 ### 8. Auto-optimization candidates
@@ -177,7 +177,7 @@ and pricing-source calls never reach the browser and CORS is avoided.
 - Server-side port of `candidates_io`: read the active environment's
   `candidates.json`, call the GEPA sidecar `/optimize` (sidecar URL/token held
   server-side), write the optimized-prompt store, and update candidate statuses.
-  Reuses the `OptimizedEntry` / `CandidateEntry` types from `freerouter`.
+  Reuses the `OptimizedEntry` / `CandidateEntry` types from `finrouter`.
 
 ### 9. Audit log
 
@@ -185,7 +185,7 @@ and pricing-source calls never reach the browser and CORS is avoided.
   optimize, environment change — is appended to a per-deployment audit store
   (JSONL file) with `{ subject, timestamp, environment, action, target,
   beforeHash, afterHash }`. Surfaced in the Audit view. Distinct from
-  FreeRouter's own request-level audit trail.
+  FinRouter's own request-level audit trail.
 
 ### 10. Frontend (React + Vite + TS)
 
@@ -267,4 +267,4 @@ feature is verified working — the `config-manager/` directory and its referenc
 
 - Database-backed config store and config version history beyond the audit log.
 - Built-in user management (delegated to the IdP).
-- Editing more than one FreeRouter deployment's files per environment entry.
+- Editing more than one FinRouter deployment's files per environment entry.

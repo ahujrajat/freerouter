@@ -1,4 +1,4 @@
-"""FreeRouter GEPA optimization sidecar.
+"""FinRouter GEPA optimization sidecar.
 
 Two surfaces:
 - Offline optimizer (`optimize_config.py`) — evolves RouterConfig artifacts against

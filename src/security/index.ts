@@ -1,4 +1,4 @@
-// Sub-path export: freerouter/security
+// Sub-path export: finrouter/security
 export { KeyManager } from './key-manager.js'
 export type { KeyStore } from './key-manager.js'
 export { AuditLogger } from './audit-logger.js'

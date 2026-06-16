@@ -4,7 +4,7 @@
  * plus the GEPA-tunable artifacts (admin rules, cost optimization, budgets).
  *
  * Consumed by:
- *   - editor IntelliSense for `freerouter.config.json` (via `$schema`)
+ *   - editor IntelliSense for `finrouter.config.json` (via `$schema`)
  *   - the GEPA sidecar's `CandidateValidator` (gates evolved candidates
  *     against this shape before scoring)
  *
@@ -246,8 +246,8 @@ const promptOptimization = {
 
 const schema = {
   $schema: 'http://json-schema.org/draft-07/schema#',
-  $id:     'https://freerouter.dev/config-schema.json',
-  title:   'FreeRouter configuration',
+  $id:     'https://finrouter.dev/config-schema.json',
+  title:   'FinRouter configuration',
   description:
     'JSON-serializable subset of RouterConfig. Runtime-only fields (callbacks, ' +
     'SpendStore/TelemetrySink instances, PricingSource adapters) are intentionally ' +

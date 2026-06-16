@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { resolve } from 'node:path'
 import { loadConfigFile, mergeConfigs, validateConfigKeys } from '../src/config-loader.js'
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 
 describe('Config Loader', () => {
   it('loads JSON config from file', async () => {
-    const config = await loadConfigFile(resolve(__dirname, '..', 'freerouter.config.json'))
+    const config = await loadConfigFile(resolve(__dirname, '..', 'finrouter.config.json'))
     expect(config.defaultProvider).toBe('google')
     expect(config.blockedProviders).toContain('deepseek')
     expect(config.budgets).toHaveLength(3)
@@ -66,7 +66,7 @@ describe('validateConfigKeys — full RouterConfig key coverage', () => {
   })
 })
 
-describe('FreeRouter.fromFile', () => {
+describe('FinRouter.fromFile', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -81,8 +81,8 @@ describe('FreeRouter.fromFile', () => {
   })
 
   it('creates router from JSON config file', async () => {
-    const router = await FreeRouter.fromFile(
-      resolve(__dirname, '..', 'freerouter.config.json'),
+    const router = await FinRouter.fromFile(
+      resolve(__dirname, '..', 'finrouter.config.json'),
       { audit: { enabled: false } },
     )
     expect(router.listProviders()).toContain('google')
@@ -90,8 +90,8 @@ describe('FreeRouter.fromFile', () => {
   })
 
   it('applies inline overrides over file config', async () => {
-    const router = await FreeRouter.fromFile(
-      resolve(__dirname, '..', 'freerouter.config.json'),
+    const router = await FinRouter.fromFile(
+      resolve(__dirname, '..', 'finrouter.config.json'),
       {
         promptInjectionGuard: false,
         audit: { enabled: false },

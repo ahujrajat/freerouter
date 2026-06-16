@@ -86,7 +86,7 @@ export class GoogleProvider extends BaseProvider {
     const data = (await resp.json()) as GeminiResponse
     const candidate = data.candidates[0]
     if (candidate === undefined) {
-      throw new Error('[FreeRouter/google] No candidates returned')
+      throw new Error('[FinRouter/google] No candidates returned')
     }
 
     const content = candidate.content.parts.map(p => p.text).join('')
@@ -126,7 +126,7 @@ export class GoogleProvider extends BaseProvider {
     })
 
     if (!resp.ok) await this.throwHttpError(resp, this.name)
-    if (resp.body === null) throw new Error('[FreeRouter/google] Empty stream body')
+    if (resp.body === null) throw new Error('[FinRouter/google] Empty stream body')
 
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()

@@ -1,4 +1,4 @@
-// Sub-path export: freerouter/providers
+// Sub-path export: finrouter/providers
 export { ProviderRegistry } from './registry.js'
 export type { BaseProvider } from './base-provider.js'
 export { GoogleProvider } from './google.js'

@@ -319,7 +319,7 @@ Append these cases inside the existing `describe('config routes', ...)` block (t
   })
 
   it('forbids a viewer from writing rules (403)', async () => {
-    const app = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const app = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fin-viewers'] } })
     const cookie = await login(app)
     const { version } = (await app.inject({ method: 'GET', url: '/api/env/dev/rules', headers: { cookie } })).json()
     const res = await app.inject({ method: 'PUT', url: '/api/env/dev/rules', headers: { cookie }, payload: { data: [], version } })
@@ -1456,7 +1456,7 @@ it('shows all section nav items and switches to Rate Limit', async () => {
     if (url.endsWith('/api/env')) return new Response(JSON.stringify([{ id: 'dev', label: 'Development', role: 'admin' }]), { status: 200 })
     return new Response('{}', { status: 200 })
   }))
-  render(<AppShell me={{ subject: 'u', name: 'Ada', groups: ['fr-admins'] }} />)
+  render(<AppShell me={{ subject: 'u', name: 'Ada', groups: ['fin-admins'] }} />)
   for (const label of ['General', 'Providers', 'Rate Limit', 'Budgets', 'Rules', 'Pricing Overrides', 'Optimization', 'Env Vars']) {
     expect(await screen.findByRole('link', { name: label })).toBeInTheDocument()
   }

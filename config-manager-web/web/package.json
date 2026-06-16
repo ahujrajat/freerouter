@@ -1,5 +1,5 @@
 {
-  "name": "@freerouter/config-manager-web",
+  "name": "@finrouter/config-manager-web",
   "private": true,
   "type": "module",
   "scripts": {

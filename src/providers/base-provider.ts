@@ -55,7 +55,7 @@ export abstract class BaseProvider {
       // ignore
     }
     throw new Error(
-      `[FreeRouter/${provider}] HTTP ${resp.status} ${resp.statusText}: ${body.slice(0, 200)}`,
+      `[FinRouter/${provider}] HTTP ${resp.status} ${resp.statusText}: ${body.slice(0, 200)}`,
     )
   }
 }

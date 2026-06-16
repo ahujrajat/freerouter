@@ -18,7 +18,7 @@ describe('auth routes', () => {
   })
 
   it('full login flow: callback establishes a session, /auth/me returns the user', async () => {
-    const app = await buildTestApp({ claims: { sub: 'u1', name: 'Ada', groups: ['fr-admins'] } })
+    const app = await buildTestApp({ claims: { sub: 'u1', name: 'Ada', groups: ['fin-admins'] } })
     const login = await app.inject({ method: 'GET', url: '/auth/login' })
     const cookies = cookieHeader(login.cookies)
     // Our FakeOidc ignores params; provide state matching the cookie via the login redirect.

@@ -18,7 +18,7 @@ import type {
 } from './types.js'
 import type { RouterConfig } from './config.js'
 import type { BaseProvider } from './providers/base-provider.js'
-import type { FreeRouterPlugin } from './plugin.js'
+import type { FinRouterPlugin } from './plugin.js'
 import { ProviderRegistry } from './providers/registry.js'
 import { KeyManager } from './security/key-manager.js'
 import { AuditLogger } from './security/audit-logger.js'
@@ -44,7 +44,7 @@ import { loadConfigFile, loadConfigFromEnv, mergeConfigs, validateConfigKeys } f
 import { TypedEventEmitter } from './router-events.js'
 import { MetricsCollector } from './metrics-collector.js'
 
-export class FreeRouter {
+export class FinRouter {
   private readonly registry: ProviderRegistry
   private readonly keyManager: KeyManager
   private readonly audit: AuditLogger
@@ -94,26 +94,26 @@ export class FreeRouter {
    * Format is auto-detected from file extension.
    * Automatically calls `init()` so spend history and pricing are loaded before first use.
    */
-  static async fromFile(filePath: string, overrides?: Partial<RouterConfig>): Promise<FreeRouter> {
+  static async fromFile(filePath: string, overrides?: Partial<RouterConfig>): Promise<FinRouter> {
     const fileConfig = await loadConfigFile(filePath)
     const unknownKeys = validateConfigKeys(fileConfig as Record<string, unknown>)
     if (unknownKeys.length > 0) {
-      process.stderr.write(`[FreeRouter] Warning: unknown config keys: ${unknownKeys.join(', ')}\n`)
+      process.stderr.write(`[FinRouter] Warning: unknown config keys: ${unknownKeys.join(', ')}\n`)
     }
     const merged = mergeConfigs(fileConfig, overrides) as RouterConfig
-    const router = new FreeRouter(merged)
+    const router = new FinRouter(merged)
     await router.init()
     return router
   }
 
   /**
-   * Create a router from the path in FREEROUTER_CONFIG env var.
+   * Create a router from the path in FINROUTER_CONFIG env var.
    * Automatically calls `init()` so spend history and pricing are loaded before first use.
    */
-  static async fromEnv(overrides?: Partial<RouterConfig>): Promise<FreeRouter> {
+  static async fromEnv(overrides?: Partial<RouterConfig>): Promise<FinRouter> {
     const fileConfig = await loadConfigFromEnv()
     const merged = mergeConfigs(fileConfig, overrides) as RouterConfig
-    const router = new FreeRouter(merged)
+    const router = new FinRouter(merged)
     await router.init()
     return router
   }
@@ -249,7 +249,7 @@ export class FreeRouter {
    * fetch the initial pricing manifest from the configured PricingSource.
    *
    * Called automatically by `fromFile` and `fromEnv`.
-   * When using `new FreeRouter(config)` directly, call `await router.init()` before
+   * When using `new FinRouter(config)` directly, call `await router.init()` before
    * processing requests if you want historical spend data loaded.
    *
    * Safe to call multiple times — subsequent calls are no-ops.
@@ -355,7 +355,7 @@ export class FreeRouter {
     try {
       manifest = await source.fetch()
     } catch (err) {
-      process.stderr.write(`[FreeRouter] PricingSource fetch failed: ${String(err)}\n`)
+      process.stderr.write(`[FinRouter] PricingSource fetch failed: ${String(err)}\n`)
       return
     }
 
@@ -387,7 +387,7 @@ export class FreeRouter {
     try {
       rules = await source.fetch()
     } catch (err) {
-      process.stderr.write(`[FreeRouter] RulesSource fetch failed: ${String(err)}\n`)
+      process.stderr.write(`[FinRouter] RulesSource fetch failed: ${String(err)}\n`)
       return
     }
 
@@ -401,7 +401,7 @@ export class FreeRouter {
    */
   setRule(rule: Rule): void {
     if (this.rulesEngine === undefined) {
-      throw new Error('[FreeRouter] Rules engine is not configured. Set `config.rules` or `config.rulesRefresh`.')
+      throw new Error('[FinRouter] Rules engine is not configured. Set `config.rules` or `config.rulesRefresh`.')
     }
     this.rulesEngine.upsertRule(rule)
   }
@@ -616,7 +616,7 @@ export class FreeRouter {
         ...(context.orgId !== undefined && { orgId: context.orgId }),
       })
       this.metricsCollector.recordRequest('unknown', 0, 0, 'blocked')
-      throw new Error(`[FreeRouter] Request blocked by rule "${ruleDecision.ruleId}": ${ruleDecision.reason}`)
+      throw new Error(`[FinRouter] Request blocked by rule "${ruleDecision.ruleId}": ${ruleDecision.reason}`)
     }
 
     // ── Per-request prompt optimization (overrides cost/rules when enabled) ──
@@ -660,7 +660,7 @@ export class FreeRouter {
         ...(context.orgId !== undefined && { orgId: context.orgId }),
       })
       this.metricsCollector.recordRequest('unknown', 0, 0, 'blocked')
-      throw new Error(`[FreeRouter] Request blocked: ${decision.blockedReason}`)
+      throw new Error(`[FinRouter] Request blocked: ${decision.blockedReason}`)
     }
 
     const finalReq: ChatRequest = { ...effectiveReq, model: decision.effectiveModel }
@@ -670,7 +670,7 @@ export class FreeRouter {
     )
 
     if (this.runtimeBlocked.has(provider.name.toLowerCase())) {
-      throw new Error(`[FreeRouter] Provider "${provider.name}" has been removed.`)
+      throw new Error(`[FinRouter] Provider "${provider.name}" has been removed.`)
     }
 
     const hmacKey = this.keyManager.deriveHmacKey(userId)
@@ -766,7 +766,7 @@ export class FreeRouter {
         ...(context.orgId !== undefined && { orgId: context.orgId }),
       })
       this.metricsCollector.recordRequest('unknown', 0, 0, 'blocked')
-      throw new Error(`[FreeRouter] Request blocked by rule "${ruleDecision.ruleId}": ${ruleDecision.reason}`)
+      throw new Error(`[FinRouter] Request blocked by rule "${ruleDecision.ruleId}": ${ruleDecision.reason}`)
     }
 
     // ── Per-request prompt optimization (overrides cost/rules when enabled) ──
@@ -797,7 +797,7 @@ export class FreeRouter {
         ...(context.orgId !== undefined && { orgId: context.orgId }),
       })
       this.metricsCollector.recordRequest('unknown', 0, 0, 'blocked')
-      throw new Error(`[FreeRouter] Request blocked: ${decision.blockedReason}`)
+      throw new Error(`[FinRouter] Request blocked: ${decision.blockedReason}`)
     }
 
     const finalReq: ChatRequest = { ...effectiveReq, model: decision.effectiveModel }
@@ -807,7 +807,7 @@ export class FreeRouter {
     )
 
     if (this.runtimeBlocked.has(provider.name.toLowerCase())) {
-      throw new Error(`[FreeRouter] Provider "${provider.name}" has been removed.`)
+      throw new Error(`[FinRouter] Provider "${provider.name}" has been removed.`)
     }
 
     const hmacKey = this.keyManager.deriveHmacKey(userId)
@@ -908,9 +908,9 @@ export class FreeRouter {
    * Install a plugin. Duplicate installs (by name) are silently skipped.
    * Returns `this` for chaining.
    */
-  use(plugin: FreeRouterPlugin): this {
+  use(plugin: FinRouterPlugin): this {
     if (this.installedPlugins.has(plugin.name)) {
-      process.stderr.write(`[FreeRouter] Plugin "${plugin.name}" already installed — skipping.\n`)
+      process.stderr.write(`[FinRouter] Plugin "${plugin.name}" already installed — skipping.\n`)
       return this
     }
     plugin.install(this)
@@ -1010,7 +1010,7 @@ export class FreeRouter {
       liveCostUsd: record.costUsd,
       sink: cfg.sink,
     }).catch(err => {
-      process.stderr.write(`[FreeRouter] shadow router error: ${String(err)}\n`)
+      process.stderr.write(`[FinRouter] shadow router error: ${String(err)}\n`)
     })
   }
 

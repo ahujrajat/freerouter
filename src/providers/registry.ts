@@ -67,7 +67,7 @@ export class ProviderRegistry {
     const name = provider.name.toLowerCase()
     if (this.blocked.has(name)) {
       throw new Error(
-        `[FreeRouter] Provider "${name}" is blocked by policy and cannot be registered.`,
+        `[FinRouter] Provider "${name}" is blocked by policy and cannot be registered.`,
       )
     }
     this.providers.set(name, provider)
@@ -78,7 +78,7 @@ export class ProviderRegistry {
     const key = name.toLowerCase()
     if (this.blocked.has(key)) {
       throw new Error(
-        `[FreeRouter] Provider "${key}" is blocked by policy and cannot be registered.`,
+        `[FinRouter] Provider "${key}" is blocked by policy and cannot be registered.`,
       )
     }
     this.factories.set(key, factory)
@@ -177,7 +177,7 @@ export class ProviderRegistry {
     }
 
     throw new Error(
-      `[FreeRouter] Unknown provider: "${name}". Register it with router.registerProvider().`,
+      `[FinRouter] Unknown provider: "${name}". Register it with router.registerProvider().`,
     )
   }
 
@@ -195,7 +195,7 @@ export class ProviderRegistry {
       const modelName = model.slice(slashIdx + 1)
       const provider = this.get(providerName)
       if (!this.isModelAllowed(providerName, modelName)) {
-        throw new Error(`[FreeRouter] Model "${modelName}" has been removed from provider "${providerName}".`)
+        throw new Error(`[FinRouter] Model "${modelName}" has been removed from provider "${providerName}".`)
       }
       return { provider, modelName }
     }
@@ -205,7 +205,7 @@ export class ProviderRegistry {
     for (const [prefix, providerName] of this.prefixMap) {
       if (modelLower.startsWith(prefix)) {
         if (!this.isModelAllowed(providerName, model)) {
-          throw new Error(`[FreeRouter] Model "${model}" has been removed from provider "${providerName}".`)
+          throw new Error(`[FinRouter] Model "${model}" has been removed from provider "${providerName}".`)
         }
         return { provider: this.get(providerName), modelName: model }
       }
@@ -214,13 +214,13 @@ export class ProviderRegistry {
     // Fall back to configured default
     if (defaultProvider !== undefined) {
       if (!this.isModelAllowed(defaultProvider, model)) {
-        throw new Error(`[FreeRouter] Model "${model}" has been removed from provider "${defaultProvider}".`)
+        throw new Error(`[FinRouter] Model "${model}" has been removed from provider "${defaultProvider}".`)
       }
       return { provider: this.get(defaultProvider), modelName: model }
     }
 
     throw new Error(
-      `[FreeRouter] Cannot determine provider for model "${model}". ` +
+      `[FinRouter] Cannot determine provider for model "${model}". ` +
       'Use "provider/model" format or set defaultProvider in config.',
     )
   }

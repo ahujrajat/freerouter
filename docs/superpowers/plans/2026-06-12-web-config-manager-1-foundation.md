@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stand up the `config-manager-web` app as a complete, testable vertical slice — Fastify/TS backend with OIDC auth, RBAC, a multi-environment file store with optimistic locking, config validation (reusing the `freerouter` package), and an append-only audit log; plus a React/Vite/TS frontend with the Accenture light theme, an auth gate, an environment switcher, and working General + Providers sections.
+**Goal:** Stand up the `config-manager-web` app as a complete, testable vertical slice — Fastify/TS backend with OIDC auth, RBAC, a multi-environment file store with optimistic locking, config validation (reusing the `finrouter` package), and an append-only audit log; plus a React/Vite/TS frontend with the Accenture light theme, an auth gate, an environment switcher, and working General + Providers sections.
 
-**Architecture:** A separate app under `config-manager-web/` (npm workspaces: `server/` + `web/`), never published in the FreeRouter npm package. The server is a Fastify API that reads/writes per-environment FreeRouter config files on disk with content-hash optimistic locking, guarded by OIDC sessions and per-environment RBAC, recording every mutation to an audit log. The frontend is a React SPA that talks to the API and renders the config as themed forms. Validation reuses `freerouter`'s exported `validateConfig` / `validateConfigKeys`.
+**Architecture:** A separate app under `config-manager-web/` (npm workspaces: `server/` + `web/`), never published in the FinRouter npm package. The server is a Fastify API that reads/writes per-environment FinRouter config files on disk with content-hash optimistic locking, guarded by OIDC sessions and per-environment RBAC, recording every mutation to an audit log. The frontend is a React SPA that talks to the API and renders the config as themed forms. Validation reuses `finrouter`'s exported `validateConfig` / `validateConfigKeys`.
 
-**Tech Stack:** Node ≥20, TypeScript (ESM/NodeNext), Fastify 4, `@fastify/secure-session`, `@fastify/cookie`, `openid-client` 5, React 18, Vite 5, Vitest, `@testing-library/react`, `freerouter` (via `file:../..`).
+**Tech Stack:** Node ≥20, TypeScript (ESM/NodeNext), Fastify 4, `@fastify/secure-session`, `@fastify/cookie`, `openid-client` 5, React 18, Vite 5, Vitest, `@testing-library/react`, `finrouter` (via `file:../..`).
 
 This is **Plan 1 of a sequence**. Later plans add the remaining config sections, BYOK + key-manager backends, pricing-fetch + candidates + audit view, e2e, and the deletion of the Python `config-manager/`. Do not implement those here.
 
@@ -20,7 +20,7 @@ config-manager-web/
   .gitignore
   README.md
   server/
-    package.json                    # Fastify API; depends on freerouter (file:../..)
+    package.json                    # Fastify API; depends on finrouter (file:../..)
     tsconfig.json
     vitest.config.ts
     src/
@@ -30,7 +30,7 @@ config-manager-web/
       store/
         config-store.ts             # per-env file repo: read {data,version}, write w/ optimistic lock
         audit-log.ts                # append-only JSONL audit writer/reader
-      validation.ts                 # wraps freerouter validateConfig/validateConfigKeys -> 422 shape
+      validation.ts                 # wraps finrouter validateConfig/validateConfigKeys -> 422 shape
       auth/
         oidc.ts                     # OidcProvider interface + openid-client impl
         rbac.ts                     # groups->roles mapping w/ per-env overrides + resolveRole
@@ -82,9 +82,9 @@ Run all commands from `config-manager-web/` unless a task says otherwise.
 
 ---
 
-## Task 0: Reconcile core config key-lists (FreeRouter core — prerequisite)
+## Task 0: Reconcile core config key-lists (FinRouter core — prerequisite)
 
-The web manager reuses `freerouter`'s `validateConfigKeys` (config-loader) and
+The web manager reuses `finrouter`'s `validateConfigKeys` (config-loader) and
 `validateConfig` (config-validator). Both maintain a hardcoded set of known
 top-level keys, and both are **incomplete** relative to `RouterConfig`:
 
@@ -100,8 +100,8 @@ top-level keys, and both are **incomplete** relative to `RouterConfig`:
   so this produces spurious "possible typo" warnings rather than rejections —
   still worth fixing.
 
-This task runs in the **FreeRouter core** (repo root
-`/Users/rajat.a.ahuja/Dev/FreeRouter`), not in `config-manager-web/`.
+This task runs in the **FinRouter core** (repo root
+`/Users/rajat.a.ahuja/Dev/FinRouter`), not in `config-manager-web/`.
 
 **Files:**
 - Modify: `src/config-loader.ts` (the `KNOWN_KEYS` set)
@@ -204,9 +204,9 @@ Expected: PASS (the new cases plus all existing config-loader cases).
 Run the full core suite to be safe: `npx vitest run --exclude '**/cli.test.ts'`
 Expected: all pass (the 11 cli.test.ts EACCES failures are a pre-existing sandbox issue, unrelated).
 
-- [ ] **Step 6: Rebuild the `freerouter` dist so the linked package reflects the fix**
+- [ ] **Step 6: Rebuild the `finrouter` dist so the linked package reflects the fix**
 
-`config-manager-web` links `freerouter` via `file:../..`, which resolves to the
+`config-manager-web` links `finrouter` via `file:../..`, which resolves to the
 built `dist/`. Rebuild it:
 
 Run (from repo root): `node node_modules/tsup/dist/cli-default.js`
@@ -261,9 +261,9 @@ coverage/
 - [ ] **Step 3: Create `config-manager-web/README.md`**
 
 ```markdown
-# FreeRouter Web Config Manager
+# FinRouter Web Config Manager
 
-Deployed, multi-user web manager for FreeRouter configuration. Replaces the
+Deployed, multi-user web manager for FinRouter configuration. Replaces the
 Python `config-manager/`. Not published in the npm package.
 
 - `server/` — Fastify + TypeScript API (OIDC auth, RBAC, per-environment file
@@ -286,7 +286,7 @@ See `docs/superpowers/specs/2026-06-12-web-config-manager-design.md`.
 
 ```json
 {
-  "name": "@freerouter/config-manager-server",
+  "name": "@finrouter/config-manager-server",
   "private": true,
   "type": "module",
   "main": "dist/server.js",
@@ -301,7 +301,7 @@ See `docs/superpowers/specs/2026-06-12-web-config-manager-design.md`.
     "@fastify/cookie": "^9.3.1",
     "@fastify/secure-session": "^7.5.1",
     "openid-client": "^5.6.5",
-    "freerouter": "file:../.."
+    "finrouter": "file:../.."
   },
   "devDependencies": {
     "tsx": "^4.16.0",
@@ -353,7 +353,7 @@ export default defineConfig({
 
 ```json
 {
-  "name": "@freerouter/config-manager-web",
+  "name": "@finrouter/config-manager-web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -444,7 +444,7 @@ export default defineConfig({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FreeRouter Config Manager</title>
+    <title>FinRouter Config Manager</title>
   </head>
   <body>
     <div id="root"></div>
@@ -456,10 +456,10 @@ export default defineConfig({
 - [ ] **Step 12: Install and verify the workspace resolves**
 
 Run (from `config-manager-web/`): `npm install`
-Expected: installs without error; `node_modules/freerouter` is linked to the repo root.
+Expected: installs without error; `node_modules/finrouter` is linked to the repo root.
 
-Run: `ls node_modules/freerouter/dist/index.js`
-Expected: the file exists (the `freerouter` package is built — if missing, run `npm run build` in the repo root first).
+Run: `ls node_modules/finrouter/dist/index.js`
+Expected: the file exists (the `finrouter` package is built — if missing, run `npm run build` in the repo root first).
 
 - [ ] **Step 13: Commit**
 
@@ -972,19 +972,19 @@ git commit -m "feat(web-config): append-only audit log"
 
 ---
 
-## Task 6: Validation (reuse freerouter)
+## Task 6: Validation (reuse finrouter)
 
 **Files:**
 - Create: `config-manager-web/server/src/validation.ts`
 - Test: `config-manager-web/server/test/validation.test.ts`
 
 **Depends on Task 0:** the core key-lists must already be reconciled and the
-`freerouter` dist rebuilt, or this task's tests will see false-positive unknown
+`finrouter` dist rebuilt, or this task's tests will see false-positive unknown
 keys for `costOptimization`/`rules`/etc.
 
 - [ ] **Step 1: Confirm the reused exports exist**
 
-Run (from repo root `/Users/rajat.a.ahuja/Dev/FreeRouter`): `grep -nE "validateConfig|validateConfigKeys" src/index.ts`
+Run (from repo root `/Users/rajat.a.ahuja/Dev/FinRouter`): `grep -nE "validateConfig|validateConfigKeys" src/index.ts`
 Expected: both `validateConfig` and `validateConfigKeys` are exported. (They are — `validateConfig` from `./config-validator.js`, `validateConfigKeys` from `./config-loader.js`.) `validateConfig` returns `{ valid: boolean; errors: string[]; warnings: string[] }`; unknown keys are reported in `warnings` (not `errors`), so structural validity is independent of key typos.
 
 - [ ] **Step 2: Write the failing test**
@@ -1017,7 +1017,7 @@ Expected: FAIL — cannot find `../src/validation.js`.
 - [ ] **Step 4: Create `config-manager-web/server/src/validation.ts`**
 
 ```ts
-import { validateConfig, validateConfigKeys } from 'freerouter'
+import { validateConfig, validateConfigKeys } from 'finrouter'
 
 export interface ValidationOutcome {
   ok: boolean
@@ -1025,7 +1025,7 @@ export interface ValidationOutcome {
 }
 
 /**
- * Validate a candidate FreeRouter config object using the library's own
+ * Validate a candidate FinRouter config object using the library's own
  * validators: unknown top-level keys (typo detection) plus structural checks.
  * Returns a flat list of human-readable messages for the API's 422 response.
  */
@@ -1058,7 +1058,7 @@ Expected: PASS (2 tests). The "unknown key" case passes because `validateConfigK
 
 ```bash
 git add config-manager-web/server/src/validation.ts config-manager-web/server/test/validation.test.ts
-git commit -m "feat(web-config): config validation via freerouter validators"
+git commit -m "feat(web-config): config validation via finrouter validators"
 ```
 
 ---
@@ -1079,10 +1079,10 @@ import { RoleResolver } from '../src/auth/rbac.js'
 
 const mapping = {
   // group -> default role
-  defaults: { 'fr-admins': 'admin', 'fr-viewers': 'viewer' },
+  defaults: { 'fin-admins': 'admin', 'fin-viewers': 'viewer' },
   // per-environment overrides: env -> group -> role
   perEnvironment: {
-    prod: { 'fr-admins': 'viewer', 'fr-prod-admins': 'admin' },
+    prod: { 'fin-admins': 'viewer', 'fin-prod-admins': 'admin' },
   },
 } as const
 
@@ -1090,16 +1090,16 @@ describe('RoleResolver', () => {
   const resolver = new RoleResolver(mapping)
 
   it('resolves the highest default role from a user\'s groups', () => {
-    expect(resolver.roleFor(['fr-viewers'], 'dev')).toBe('viewer')
-    expect(resolver.roleFor(['fr-admins'], 'dev')).toBe('admin')
+    expect(resolver.roleFor(['fin-viewers'], 'dev')).toBe('viewer')
+    expect(resolver.roleFor(['fin-admins'], 'dev')).toBe('admin')
   })
 
   it('applies per-environment overrides', () => {
-    // fr-admins is downgraded to viewer on prod
-    expect(resolver.roleFor(['fr-admins'], 'prod')).toBe('viewer')
-    // fr-prod-admins is admin only on prod
-    expect(resolver.roleFor(['fr-prod-admins'], 'prod')).toBe('admin')
-    expect(resolver.roleFor(['fr-prod-admins'], 'dev')).toBeUndefined()
+    // fin-admins is downgraded to viewer on prod
+    expect(resolver.roleFor(['fin-admins'], 'prod')).toBe('viewer')
+    // fin-prod-admins is admin only on prod
+    expect(resolver.roleFor(['fin-prod-admins'], 'prod')).toBe('admin')
+    expect(resolver.roleFor(['fin-prod-admins'], 'dev')).toBeUndefined()
   })
 
   it('returns undefined when no group maps to a role', () => {
@@ -1107,7 +1107,7 @@ describe('RoleResolver', () => {
   })
 
   it('admin wins when multiple groups grant different roles', () => {
-    expect(resolver.roleFor(['fr-viewers', 'fr-admins'], 'dev')).toBe('admin')
+    expect(resolver.roleFor(['fin-viewers', 'fin-admins'], 'dev')).toBe('admin')
   })
 })
 ```
@@ -1160,7 +1160,7 @@ Replace the loop body in `roleFor` with the clearer equivalent:
     }
 ```
 
-This satisfies all four test cases: on `prod`, `fr-admins` → override `viewer`; `fr-prod-admins` → override `admin`; on `dev` (no override map) `fr-prod-admins` → `defaults['fr-prod-admins']` which is undefined.
+This satisfies all four test cases: on `prod`, `fin-admins` → override `viewer`; `fin-prod-admins` → override `admin`; on `dev` (no override map) `fin-prod-admins` → `defaults['fin-prod-admins']` which is undefined.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1198,7 +1198,7 @@ class FakeOidc implements OidcProvider {
     return `https://idp/auth?state=${req.state}&nonce=${req.nonce}&redirect_uri=${encodeURIComponent(req.redirectUri)}`
   }
   async exchange(): Promise<Claims> {
-    return { sub: 'user-1', name: 'Ada', groups: ['fr-admins'] }
+    return { sub: 'user-1', name: 'Ada', groups: ['fin-admins'] }
   }
 }
 
@@ -1215,7 +1215,7 @@ describe('OidcProvider contract', () => {
     const p: OidcProvider = new FakeOidc()
     const claims = await p.exchange({ callbackUrl: 'https://app/cb?code=x&state=s1', state: 's1', nonce: 'n1' })
     expect(claims.sub).toBe('user-1')
-    expect(claims.groups).toContain('fr-admins')
+    expect(claims.groups).toContain('fin-admins')
   })
 })
 ```
@@ -1364,9 +1364,9 @@ export function buildTestApp(opts: { claims?: Claims } = {}): ReturnType<typeof 
   const { dir, environmentsFile } = makeTempEnv()
   const deps: AppDeps = {
     sessionSecret: 'k'.repeat(32),
-    oidc: new FakeOidc(opts.claims ?? { sub: 'admin-1', name: 'Admin', groups: ['fr-admins'] }),
+    oidc: new FakeOidc(opts.claims ?? { sub: 'admin-1', name: 'Admin', groups: ['fin-admins'] }),
     environments: EnvironmentRegistry.load(environmentsFile),
-    roles: new RoleResolver({ defaults: { 'fr-admins': 'admin', 'fr-viewers': 'viewer' } }),
+    roles: new RoleResolver({ defaults: { 'fin-admins': 'admin', 'fin-viewers': 'viewer' } }),
     audit: new AuditLog(join(dir, 'audit.jsonl')),
     redirectUri: 'http://localhost/auth/callback',
     afterLoginRedirect: '/',
@@ -1400,7 +1400,7 @@ describe('auth routes', () => {
   })
 
   it('full login flow: callback establishes a session, /auth/me returns the user', async () => {
-    const app = await buildTestApp({ claims: { sub: 'u1', name: 'Ada', groups: ['fr-admins'] } })
+    const app = await buildTestApp({ claims: { sub: 'u1', name: 'Ada', groups: ['fin-admins'] } })
     const login = await app.inject({ method: 'GET', url: '/auth/login' })
     const cookies = login.cookies.map(c => `${c.name}=${c.value}`).join('; ')
     // Our FakeOidc ignores params; provide state matching the cookie via the login redirect.
@@ -1475,7 +1475,7 @@ describe('config routes', () => {
   })
 
   it('forbids a viewer from writing (403)', async () => {
-    const app = await buildTestApp({ claims: { sub: 'v1', name: 'Viewer', groups: ['fr-viewers'] } })
+    const app = await buildTestApp({ claims: { sub: 'v1', name: 'Viewer', groups: ['fin-viewers'] } })
     const cookie = await login(app)
     const { version } = (await app.inject({ method: 'GET', url: '/api/env/dev/config', headers: { cookie } })).json()
     const res = await app.inject({ method: 'PUT', url: '/api/env/dev/config', headers: { cookie }, payload: { data: { defaultModel: 'x' }, version } })
@@ -2003,7 +2003,7 @@ export function AppShell({ me }: { me: MeResponse }) {
   return (
     <div>
       <header className="header">
-        <span className="header__brand">FreeRouter Admin</span>
+        <span className="header__brand">FinRouter Admin</span>
         {envs.length > 0 && <EnvSwitcher envs={envs} value={envId} onChange={setEnvId} />}
         <span className="header__spacer" />
         <span>{me.name}</span>
@@ -2405,7 +2405,7 @@ git status
 
 ## Self-Review Notes (for the implementer)
 
-- **Spec coverage (Plan 1 portion):** placement (`config-manager-web/`, Task 1), OIDC auth (Task 8 + auth-routes Task 9), RBAC with per-env overrides (Task 7 + enforced in config-routes Task 9), environments (Task 3), config store + optimistic 409 (Task 4 + Task 9), validation→422 via `freerouter` (Task 6 + Task 9), audit log (Task 5 + recorded in Task 9), Accenture theme (Task 10), env switcher + auth gate + role-aware UI (Task 10), General + Providers sections with conflict handling (Tasks 11–12). Remaining sections, BYOK, pricing-fetch, candidates, audit view, e2e, and Python-tool deletion are explicitly deferred to later plans.
+- **Spec coverage (Plan 1 portion):** placement (`config-manager-web/`, Task 1), OIDC auth (Task 8 + auth-routes Task 9), RBAC with per-env overrides (Task 7 + enforced in config-routes Task 9), environments (Task 3), config store + optimistic 409 (Task 4 + Task 9), validation→422 via `finrouter` (Task 6 + Task 9), audit log (Task 5 + recorded in Task 9), Accenture theme (Task 10), env switcher + auth gate + role-aware UI (Task 10), General + Providers sections with conflict handling (Tasks 11–12). Remaining sections, BYOK, pricing-fetch, candidates, audit view, e2e, and Python-tool deletion are explicitly deferred to later plans.
 - **Type consistency:** `VersionedDoc<T>` shape (`{data,version}`) is identical server (`types.ts`) and web (`types.ts`); routes return it from `JsonFileStore.read/write`; the web `useConfig` consumes it. `Role` is `'admin'|'viewer'` on both sides. `SessionUser` (`{subject,name,groups}`) is what `/auth/me` returns and what the web `MeResponse` expects. The config `PUT` contract `{data, version}` matches between `config-routes.ts`, `useConfig.save`, and both section tests.
 - **No placeholders:** every code step contains complete code; the two section stubs in Task 10 are explicitly replaced in Tasks 11–12.
-- **Core prerequisite (Task 0):** the web manager's validation reuse is only correct after `freerouter`'s two known-key lists are reconciled with `RouterConfig` and the dist is rebuilt. Task 0 does this in the core with regression tests; every later task that links `freerouter` assumes the rebuilt dist. `validateConfig`'s result shape is confirmed `{ valid, errors: string[], warnings: string[] }`, with unknown keys in `warnings` only — so the `validation.ts` adapter consumes `validateConfigKeys` for key typos and `validateConfig.errors` for structural rejection, with no duplication.
+- **Core prerequisite (Task 0):** the web manager's validation reuse is only correct after `finrouter`'s two known-key lists are reconciled with `RouterConfig` and the dist is rebuilt. Task 0 does this in the core with regression tests; every later task that links `finrouter` assumes the rebuilt dist. `validateConfig`'s result shape is confirmed `{ valid, errors: string[], warnings: string[] }`, with unknown keys in `warnings` only — so the `validation.ts` adapter consumes `validateConfigKeys` for key typos and `validateConfig.errors` for structural rejection, with no duplication.

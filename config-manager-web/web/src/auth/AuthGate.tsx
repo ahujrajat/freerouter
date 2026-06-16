@@ -15,7 +15,7 @@ export function AuthGate({ children }: { children: (me: MeResponse) => ReactNode
     return (
       <div className="screen">
         <div className="screen__card">
-          <div className="screen__brand"><span className="brand-mark" aria-hidden="true">&gt;</span> FreeRouter</div>
+          <div className="screen__brand"><span className="brand-mark" aria-hidden="true">&gt;</span> FinRouter</div>
           <div className="spinner" role="status" aria-label="Loading" />
           <div className="screen__muted">Loading your configuration…</div>
         </div>
@@ -26,7 +26,7 @@ export function AuthGate({ children }: { children: (me: MeResponse) => ReactNode
     return (
       <div className="screen">
         <div className="screen__card">
-          <div className="screen__brand"><span className="brand-mark" aria-hidden="true">&gt;</span> FreeRouter</div>
+          <div className="screen__brand"><span className="brand-mark" aria-hidden="true">&gt;</span> FinRouter</div>
           <div className="screen__muted">Redirecting to sign in…</div>
         </div>
       </div>

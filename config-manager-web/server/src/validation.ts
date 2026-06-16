@@ -1,4 +1,4 @@
-import { validateConfig, validateConfigKeys } from 'freerouter'
+import { validateConfig, validateConfigKeys } from 'finrouter'
 
 export interface ValidationOutcome {
   ok: boolean
@@ -6,7 +6,7 @@ export interface ValidationOutcome {
 }
 
 /**
- * Validate a candidate FreeRouter config object using the library's own
+ * Validate a candidate FinRouter config object using the library's own
  * validators: unknown top-level keys (typo detection) plus structural checks.
  * Returns a flat list of human-readable messages for the API's 422 response.
  */

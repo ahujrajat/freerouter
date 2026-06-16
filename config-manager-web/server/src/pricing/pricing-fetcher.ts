@@ -1,4 +1,4 @@
-import type { PricingManifest, PricingSource } from 'freerouter'
+import type { PricingManifest, PricingSource } from 'finrouter'
 
 export interface PricingFetcher {
   fetch(source: string): Promise<PricingManifest>
@@ -6,7 +6,7 @@ export interface PricingFetcher {
 
 export type SourceFactory = () => PricingSource
 
-/** Fetches pricing via injectable source factories (real ones wrap freerouter's
+/** Fetches pricing via injectable source factories (real ones wrap finrouter's
  *  liteLLMPricingSource/openRouterPricingSource; tests inject fakes). */
 export class LibraryPricingFetcher implements PricingFetcher {
   constructor(private readonly sources: Record<string, SourceFactory>) {}

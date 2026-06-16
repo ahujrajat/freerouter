@@ -48,7 +48,7 @@ describe('byok routes', () => {
   })
 
   it('forbids a viewer from setting a key (403) and 401 unauthenticated', async () => {
-    const viewer = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fr-viewers'] } })
+    const viewer = await buildTestApp({ claims: { sub: 'v', name: 'V', groups: ['fin-viewers'] } })
     const vcookie = await login(viewer)
     expect((await viewer.inject({ method: 'POST', url: '/api/env/dev/byok/x', headers: { cookie: vcookie }, payload: { backend: 'local', secret: 's' } })).statusCode).toBe(403)
     await viewer.close()

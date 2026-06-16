@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { writeFile, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 import { FileRulesSource } from '../src/adapters/file-rules-source.js'
 import type { Rule } from '../src/finops/rules-engine.js'
 import type { BaseProvider } from '../src/providers/base-provider.js'
@@ -30,9 +30,9 @@ class FakeProvider implements BaseProvider {
   pricing(_model: string) { return { input: this.rate, output: this.rate * 3 } }
 }
 
-function makeRouter(opts: Partial<Parameters<typeof FreeRouter['prototype']['constructor']>[0]> = {}, audits?: AuditEntry[]) {
+function makeRouter(opts: Partial<Parameters<typeof FinRouter['prototype']['constructor']>[0]> = {}, audits?: AuditEntry[]) {
   const sink: AuditSink = { write: e => { audits?.push(e) } }
-  const router = new FreeRouter({
+  const router = new FinRouter({
     masterKey,
     audit: { enabled: audits !== undefined, sink },
     ...opts,

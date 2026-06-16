@@ -2,7 +2,7 @@ import { createCipheriv, randomBytes } from 'node:crypto'
 import type { KeyBackend, StoredKey } from './types.js'
 
 /** Encrypts secrets at rest with AES-256-GCM. The web manager never decrypts —
- *  it is write-only; decryption belongs to the FreeRouter runtime. */
+ *  it is write-only; decryption belongs to the FinRouter runtime. */
 export class LocalKeyBackend implements KeyBackend {
   readonly name = 'local' as const
   private readonly key: Buffer

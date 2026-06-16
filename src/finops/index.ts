@@ -1,4 +1,4 @@
-// Sub-path export: freerouter/finops
+// Sub-path export: finrouter/finops
 export { SpendTracker } from './spend-tracker.js'
 export { SpendForecaster } from './spend-forecaster.js'
 export { ChargebackEngine } from './chargeback.js'

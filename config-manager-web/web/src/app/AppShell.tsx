@@ -51,7 +51,7 @@ export function AppShell({ me }: { me: MeResponse }) {
       <header className="header">
         <span className="header__brand">
           <span className="brand-mark" aria-hidden="true">&gt;</span>
-          FreeRouter <span className="brand-sub">Config Manager</span>
+          FinRouter <span className="brand-sub">Config Manager</span>
         </span>
         {envs.length > 0 && <EnvSwitcher envs={envs} value={envId} onChange={setEnvId} />}
         <span className="header__spacer" />

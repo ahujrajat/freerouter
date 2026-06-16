@@ -86,7 +86,7 @@ export class OpenAIProvider extends BaseProvider {
 
     const data = (await resp.json()) as OAIResponse
     const choice = data.choices[0]
-    if (choice === undefined) throw new Error('[FreeRouter/openai] No choices returned')
+    if (choice === undefined) throw new Error('[FinRouter/openai] No choices returned')
 
     const usage: TokenUsage = {
       promptTokens: data.usage.prompt_tokens,
@@ -125,7 +125,7 @@ export class OpenAIProvider extends BaseProvider {
     })
 
     if (!resp.ok) await this.throwHttpError(resp, this.name)
-    if (resp.body === null) throw new Error('[FreeRouter/openai] Empty stream body')
+    if (resp.body === null) throw new Error('[FinRouter/openai] Empty stream body')
 
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()

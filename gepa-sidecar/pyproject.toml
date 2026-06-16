@@ -1,7 +1,7 @@
 [project]
-name = "freerouter-gepa-sidecar"
+name = "finrouter-gepa-sidecar"
 version = "0.1.0"
-description = "Offline + per-request GEPA optimization sidecar for FreeRouter"
+description = "Offline + per-request GEPA optimization sidecar for FinRouter"
 requires-python = ">=3.10,<3.15"
 dependencies = [
   "gepa>=0.1.0",

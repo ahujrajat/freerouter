@@ -1,5 +1,5 @@
 /**
- * FreeRouter — Shared type definitions
+ * FinRouter — Shared type definitions
  * Provider-agnostic, zero-dependency.
  */
 
@@ -276,7 +276,7 @@ export interface ProviderHealth {
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy'
   providers: ProviderHealth[]
-  /** Milliseconds since FreeRouter was instantiated */
+  /** Milliseconds since FinRouter was instantiated */
   uptime: number
   timestamp: number
 }

@@ -1,6 +1,6 @@
-# FreeRouter Web Config Manager
+# FinRouter Web Config Manager
 
-Deployed, multi-user web manager for FreeRouter configuration. Replaces the
+Deployed, multi-user web manager for FinRouter configuration. Replaces the
 Python `config-manager/`. Not published in the npm package.
 
 - `server/` — Fastify + TypeScript API (OIDC auth, RBAC, per-environment file
@@ -38,8 +38,8 @@ npm run build        # builds server (dist/) and web (web/dist/)
 OIDC_ISSUER=... OIDC_CLIENT_ID=... OIDC_CLIENT_SECRET=... \
 OIDC_REDIRECT_URI=https://admin.example.com/auth/callback \
 SESSION_SECRET=$(openssl rand -hex 32) \
-ENVIRONMENTS_FILE=/etc/freerouter/environments.json \
-ROLE_MAPPING_FILE=/etc/freerouter/role-mapping.json \
+ENVIRONMENTS_FILE=/etc/finrouter/environments.json \
+ROLE_MAPPING_FILE=/etc/finrouter/role-mapping.json \
 AUDIT_LOG_FILE=/var/log/fr-admin-audit.jsonl \
 BYOK_MASTER_KEY=$(openssl rand -hex 32) \
 WEB_DIST_DIR="$(pwd)/web/dist" \

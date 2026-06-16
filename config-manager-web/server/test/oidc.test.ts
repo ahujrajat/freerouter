@@ -6,7 +6,7 @@ class FakeOidc implements OidcProvider {
     return `https://idp/auth?state=${req.state}&nonce=${req.nonce}&redirect_uri=${encodeURIComponent(req.redirectUri)}`
   }
   async exchange(): Promise<Claims> {
-    return { sub: 'user-1', name: 'Ada', groups: ['fr-admins'] }
+    return { sub: 'user-1', name: 'Ada', groups: ['fin-admins'] }
   }
 }
 
@@ -23,6 +23,6 @@ describe('OidcProvider contract', () => {
     const p: OidcProvider = new FakeOidc()
     const claims = await p.exchange({ callbackUrl: 'https://app/cb?code=x&state=s1', state: 's1', nonce: 'n1' })
     expect(claims.sub).toBe('user-1')
-    expect(claims.groups).toContain('fr-admins')
+    expect(claims.groups).toContain('fin-admins')
   })
 })

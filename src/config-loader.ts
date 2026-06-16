@@ -61,7 +61,7 @@ async function parseYaml(raw: string): Promise<FileConfig> {
     return (mod.parse as (s: string) => unknown)(raw) as FileConfig
   } catch {
     throw new Error(
-      '[FreeRouter/ConfigLoader] YAML config requires the "yaml" package. Install it: npm i yaml',
+      '[FinRouter/ConfigLoader] YAML config requires the "yaml" package. Install it: npm i yaml',
     )
   }
 }
@@ -73,7 +73,7 @@ async function parseToml(raw: string): Promise<FileConfig> {
     return parse(raw) as FileConfig
   } catch {
     throw new Error(
-      '[FreeRouter/ConfigLoader] TOML config requires the "smol-toml" package. Install it: npm i smol-toml',
+      '[FinRouter/ConfigLoader] TOML config requires the "smol-toml" package. Install it: npm i smol-toml',
     )
   }
 }
@@ -98,7 +98,7 @@ export async function loadConfigFile(filePath: string): Promise<FileConfig> {
 
   if (parser === undefined) {
     throw new Error(
-      `[FreeRouter/ConfigLoader] Unsupported config format "${ext}". ` +
+      `[FinRouter/ConfigLoader] Unsupported config format "${ext}". ` +
       'Supported: .json, .yaml, .yml, .toml',
     )
   }
@@ -108,13 +108,13 @@ export async function loadConfigFile(filePath: string): Promise<FileConfig> {
 }
 
 /**
- * Load config from the path specified in FREEROUTER_CONFIG env var.
+ * Load config from the path specified in FINROUTER_CONFIG env var.
  */
 export async function loadConfigFromEnv(): Promise<FileConfig> {
-  const envPath = process.env['FREEROUTER_CONFIG']
+  const envPath = process.env['FINROUTER_CONFIG']
   if (envPath === undefined || envPath === '') {
     throw new Error(
-      '[FreeRouter/ConfigLoader] FREEROUTER_CONFIG environment variable is not set.',
+      '[FinRouter/ConfigLoader] FINROUTER_CONFIG environment variable is not set.',
     )
   }
   return loadConfigFile(envPath)

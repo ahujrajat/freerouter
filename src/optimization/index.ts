@@ -1,4 +1,4 @@
-// Sub-path export: freerouter/optimization
+// Sub-path export: finrouter/optimization
 export type {
   ComplexityFeatures, HeuristicWeights, ComplexityScore, SaturationConstants,
 } from './complexity-heuristics.js'

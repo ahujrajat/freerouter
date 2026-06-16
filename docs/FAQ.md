@@ -1,13 +1,13 @@
-# FreeRouter — Frequently Asked Questions
+# FinRouter — Frequently Asked Questions
 
 ---
 
 ## Table of Contents
 
-1. [What is FreeRouter?](#1-what-is-freerouter)
+1. [What is FinRouter?](#1-what-is-finrouter)
 2. [Core Concepts](#2-core-concepts)
 3. [Feature Reference](#3-feature-reference)
-4. [How to Use FreeRouter](#4-how-to-use-freerouter)
+4. [How to Use FinRouter](#4-how-to-use-finrouter)
 5. [Deployment Guide with Examples](#5-deployment-guide-with-examples)
 6. [Enterprise Use Cases](#6-enterprise-use-cases)
 7. [Troubleshooting](#7-troubleshooting)
@@ -17,9 +17,9 @@
 
 ---
 
-## 1. What is FreeRouter?
+## 1. What is FinRouter?
 
-### What problem does FreeRouter solve?
+### What problem does FinRouter solve?
 
 Most enterprises that want to offer LLM capabilities to internal teams or end customers face three hard problems simultaneously:
 
@@ -27,9 +27,9 @@ Most enterprises that want to offer LLM capabilities to internal teams or end cu
 - **Cost control** — without guardrails, a single power user or runaway loop can exhaust the entire month's LLM budget in minutes.
 - **Multi-provider flexibility** — models change rapidly; you need to swap providers, add new ones, or fall back to cheaper alternatives without redeploying.
 
-FreeRouter solves all three in a single embeddable TypeScript library with zero runtime dependencies.
+FinRouter solves all three in a single embeddable TypeScript library with zero runtime dependencies.
 
-### Who is FreeRouter for?
+### Who is FinRouter for?
 
 - **Platform teams** building internal developer portals, AI assistants, or copilots where employees bring their own LLM API keys.
 - **SaaS companies** offering LLM-powered features to customers who provide their own keys (BYOK — Bring Your Own Key).
@@ -38,7 +38,7 @@ FreeRouter solves all three in a single embeddable TypeScript library with zero 
 
 ### What does "zero runtime dependency" mean?
 
-FreeRouter has no `npm` package dependencies in its production bundle — not even `axios`, `zod`, or `winston`. Everything from HTTP to cryptography uses Node.js built-ins (`crypto`, `https`, `fs/promises`). This means:
+FinRouter has no `npm` package dependencies in its production bundle — not even `axios`, `zod`, or `winston`. Everything from HTTP to cryptography uses Node.js built-ins (`crypto`, `https`, `fs/promises`). This means:
 
 - No transitive dependency CVEs.
 - Smallest possible bundle (< 50 KB).
@@ -46,7 +46,7 @@ FreeRouter has no `npm` package dependencies in its production bundle — not ev
 
 The only *optional* peer dependency is `redis` (for the distributed `RedisKeyStore` and `RedisRateLimiter` adapters), which you only install if you need it.
 
-### What providers does FreeRouter support?
+### What providers does FinRouter support?
 
 Out of the box: **Google Gemini**, **OpenAI (GPT-4, o3, o4)**, **Anthropic (Claude)**, **Mistral**, **Groq (Llama, Gemma)**.
 
@@ -60,13 +60,13 @@ Chinese-origin models (DeepSeek, Qwen, Zhipu, etc.) are blocked by the default r
 
 ### What is BYOK (Bring Your Own Key)?
 
-In a BYOK architecture, each user provides their own API key for the LLM provider of their choice. FreeRouter stores these keys encrypted with AES-256-GCM, derives a unique encryption key per user from a master key you control, and injects the plaintext API key into the outbound HTTP request for only the microseconds needed to transmit it — then immediately zeros the buffer.
+In a BYOK architecture, each user provides their own API key for the LLM provider of their choice. FinRouter stores these keys encrypted with AES-256-GCM, derives a unique encryption key per user from a master key you control, and injects the plaintext API key into the outbound HTTP request for only the microseconds needed to transmit it — then immediately zeros the buffer.
 
 No key ever touches a log, a database row, or a response body.
 
 ### What is the budget hierarchy?
 
-FreeRouter enforces spending at five nested scopes:
+FinRouter enforces spending at five nested scopes:
 
 ```
 global
@@ -96,11 +96,11 @@ You choose the behaviour per policy via `onLimitReached`:
 
 ### What is the SpendStore?
 
-In its default configuration, FreeRouter keeps spend records in memory. The `SpendStore` interface lets you persist those records to disk (via `FileSpendStore`), Redis, a database, or any backend you choose. Records are restored on startup via `router.init()` so budget counters survive restarts.
+In its default configuration, FinRouter keeps spend records in memory. The `SpendStore` interface lets you persist those records to disk (via `FileSpendStore`), Redis, a database, or any backend you choose. Records are restored on startup via `router.init()` so budget counters survive restarts.
 
 ### What is the PricingSource?
 
-A `PricingSource` is a pluggable adapter that provides current model pricing and provider-declared rate-limit caps (`rpmLimit`, `tpmLimit`). FreeRouter ships `HttpPricingSource` (fetches a JSON endpoint, with an optional `transform` hook), `FilePricingSource` (reads a local file, re-reads on every call for hot-swapping), and `StaticPricingSource` (in-memory, for tests). Two convenience factories — `liteLLMPricingSource()` and `openRouterPricingSource()` — wrap `HttpPricingSource` with the right URL and transformer for LiteLLM's community pricing JSON and OpenRouter's `/v1/models` API respectively, so you don't need to host a manifest yourself.
+A `PricingSource` is a pluggable adapter that provides current model pricing and provider-declared rate-limit caps (`rpmLimit`, `tpmLimit`). FinRouter ships `HttpPricingSource` (fetches a JSON endpoint, with an optional `transform` hook), `FilePricingSource` (reads a local file, re-reads on every call for hot-swapping), and `StaticPricingSource` (in-memory, for tests). Two convenience factories — `liteLLMPricingSource()` and `openRouterPricingSource()` — wrap `HttpPricingSource` with the right URL and transformer for LiteLLM's community pricing JSON and OpenRouter's `/v1/models` API respectively, so you don't need to host a manifest yourself.
 
 ### What is the CostRouter?
 
@@ -175,19 +175,19 @@ The `RulesEngine` lets the admin express *value-based* directives that override 
 | Custom rate limiter | Implement `RateLimiterLike` to plug in your own rate limiting logic. |
 | Custom spend store | Implement `SpendStore` for any persistence backend. |
 | Custom pricing source | Implement `PricingSource` to fetch rates from any source (database, config service, etc.). |
-| OpenAI-compatible middleware | `createMiddleware(router)` wraps FreeRouter in an Express/Fastify handler that speaks the OpenAI Chat API wire format. |
-| Config file | `FreeRouter.fromFile('./freerouter.config.json')` accepts JSON, YAML, or TOML. |
-| CLI | `freerouter validate-config`, `list-providers`, `rotate-key` for operational management. |
+| OpenAI-compatible middleware | `createMiddleware(router)` wraps FinRouter in an Express/Fastify handler that speaks the OpenAI Chat API wire format. |
+| Config file | `FinRouter.fromFile('./finrouter.config.json')` accepts JSON, YAML, or TOML. |
+| CLI | `finrouter validate-config`, `list-providers`, `rotate-key` for operational management. |
 | Optional web configuration manager | Standalone web app (Node/TS + Fastify API, React/Vite UI) at [`config-manager-web/`](../config-manager-web/). OIDC SSO + RBAC, multi-environment, optimistic-locked editing, write-only BYOK, pricing fetch, candidates, audit. Excluded from the npm package — see [Section 8](#8-optional-configuration-manager-gui). |
 
 ---
 
-## 4. How to Use FreeRouter
+## 4. How to Use FinRouter
 
 ### Installation
 
 ```bash
-npm install freerouter
+npm install finrouter
 # Optional: for distributed adapters
 npm install redis
 ```
@@ -195,9 +195,9 @@ npm install redis
 ### Minimal setup
 
 ```typescript
-import { FreeRouter } from 'freerouter'
+import { FinRouter } from 'finrouter'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY, // 32-byte hex string
   audit: { enabled: true },
 })
@@ -219,7 +219,7 @@ console.log(`Cost: $${response.usage}`)
 
 ```typescript
 // Loads from file, calls router.init() automatically
-const router = await FreeRouter.fromFile('./freerouter.config.json')
+const router = await FinRouter.fromFile('./finrouter.config.json')
 ```
 
 ```json
@@ -260,10 +260,10 @@ for await (const chunk of stream) {
 ### Spend persistence across restarts
 
 ```typescript
-import { FreeRouter } from 'freerouter'
-import { FileSpendStore } from 'freerouter/adapters'
+import { FinRouter } from 'finrouter'
+import { FileSpendStore } from 'finrouter/adapters'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY!,
   spendPersistence: {
     store: new FileSpendStore('./data/spend.json'),
@@ -280,30 +280,30 @@ await router.init() // loads historical spend from disk
 **From a community aggregator (no manifest hosting required):**
 
 ```typescript
-import { FreeRouter, liteLLMPricingSource, openRouterPricingSource } from 'freerouter'
+import { FinRouter, liteLLMPricingSource, openRouterPricingSource } from 'finrouter'
 
 // Option 1 — LiteLLM's community-maintained pricing JSON (covers ~hundreds of
 // models across OpenAI, Anthropic, Google, Mistral, Groq, Bedrock, Azure, …).
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY!,
   pricingRefresh: { source: liteLLMPricingSource(), intervalMs: 3_600_000 },
 })
 
 // Option 2 — OpenRouter's live /v1/models API (no auth required).
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY!,
   pricingRefresh: { source: openRouterPricingSource(), intervalMs: 3_600_000 },
 })
 ```
 
-Both helpers internally apply a vendor-specific transformer to convert each upstream's per-token quotes into FreeRouter's per-1M-tokens manifest shape, then plug into the same `pricingRefresh.intervalMs` schedule as any other source.
+Both helpers internally apply a vendor-specific transformer to convert each upstream's per-token quotes into FinRouter's per-1M-tokens manifest shape, then plug into the same `pricingRefresh.intervalMs` schedule as any other source.
 
 **From a self-hosted file (hot-swappable):**
 
 ```typescript
-import { FilePricingSource } from 'freerouter/adapters'
+import { FilePricingSource } from 'finrouter/adapters'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY!,
   pricingRefresh: {
     source: new FilePricingSource('./config/pricing.json'),
@@ -332,7 +332,7 @@ await router.init()
 ### Cost optimization for batch jobs
 
 ```typescript
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY!,
   costOptimization: {
     strategy: 'cheapest',
@@ -362,9 +362,9 @@ await router.chat('alice', {
 When pure cost minimization is the wrong answer (legal must use Sonnet; VIP customers must never be downgraded; contractors must be blocked from frontier models), express it declaratively with rules.
 
 ```typescript
-import { FreeRouter, FileRulesSource } from 'freerouter'
+import { FinRouter, FileRulesSource } from 'finrouter'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   costOptimization: {
     strategy: 'cheapest',
     candidateModels: ['gemini-2.0-flash-lite', 'gpt-4o-mini'],
@@ -400,7 +400,7 @@ await router.chat('alice',
 **Hot-reloadable rules from a JSON file:**
 
 ```typescript
-new FreeRouter({
+new FinRouter({
   rules: { mode: 'pin-wins', rules: [] },
   rulesRefresh: {
     source: new FileRulesSource('./config/rules.json'),
@@ -477,7 +477,7 @@ The simplest production deployment: one Node.js process, `FileSpendStore` for pe
 
 ```
 your-api-server.ts
-  └─ FreeRouter instance (singleton, shared)
+  └─ FinRouter instance (singleton, shared)
        ├─ FileSpendStore → /data/spend.json
        └─ FilePricingSource → /config/pricing.json
 ```
@@ -485,11 +485,11 @@ your-api-server.ts
 ```typescript
 // server.ts
 import express from 'express'
-import { FreeRouter } from 'freerouter'
-import { createMiddleware } from 'freerouter/adapters'
-import { FileSpendStore, FilePricingSource } from 'freerouter/adapters'
+import { FinRouter } from 'finrouter'
+import { createMiddleware } from 'finrouter/adapters'
+import { FileSpendStore, FilePricingSource } from 'finrouter/adapters'
 
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY!,
   promptInjectionGuard: true,
   audit: { enabled: true },
@@ -546,7 +546,7 @@ For horizontally-scaled deployments (multiple pods/processes), use Redis adapter
 
 ```
 pod-1            pod-2           pod-3
-FreeRouter       FreeRouter      FreeRouter
+FinRouter        FinRouter       FinRouter
      \               |               /
       \──────── Redis cluster ───────/
                      |
@@ -556,14 +556,14 @@ FreeRouter       FreeRouter      FreeRouter
 ```
 
 ```typescript
-import { FreeRouter } from 'freerouter'
-import { RedisKeyStore, RedisRateLimiter } from 'freerouter/adapters'
+import { FinRouter } from 'finrouter'
+import { RedisKeyStore, RedisRateLimiter } from 'finrouter/adapters'
 import { createClient } from 'redis'
 
 const redis = createClient({ url: process.env.REDIS_URL })
 await redis.connect()
 
-const router = new FreeRouter({
+const router = new FinRouter({
   masterKey: process.env.ROUTER_MASTER_KEY!,
   rateLimit: { requestsPerMinute: 120, tokensPerMinute: 200_000 },
   pricingRefresh: {
@@ -586,13 +586,13 @@ keyManager.store = new RedisKeyStore(redis, { prefix: 'fr:keys:' })
 
 ### Pattern C — Express/Fastify middleware (OpenAI-compatible gateway)
 
-FreeRouter exposes a `createMiddleware` adapter so any client that speaks the OpenAI Chat Completions API works without changes.
+FinRouter exposes a `createMiddleware` adapter so any client that speaks the OpenAI Chat Completions API works without changes.
 
 ```typescript
-import { FreeRouter } from 'freerouter'
-import { createMiddleware } from 'freerouter/adapters'
+import { FinRouter } from 'finrouter'
+import { createMiddleware } from 'finrouter/adapters'
 
-const router = new FreeRouter({ /* ... */ })
+const router = new FinRouter({ /* ... */ })
 await router.init()
 
 // Fastify
@@ -610,18 +610,18 @@ app.post('/v1/chat/completions', async (req, reply) => {
 
 ### Pattern D — Serverless (AWS Lambda / Vercel)
 
-FreeRouter is stateless by design; spin up one instance per cold start. Use `MemorySpendStore` with a Lambda-level singleton and flush to DynamoDB or S3 on `shutdown()`.
+FinRouter is stateless by design; spin up one instance per cold start. Use `MemorySpendStore` with a Lambda-level singleton and flush to DynamoDB or S3 on `shutdown()`.
 
 ```typescript
 // lambda-handler.ts
-import { FreeRouter } from 'freerouter'
-import { MemorySpendStore } from 'freerouter/finops'
+import { FinRouter } from 'finrouter'
+import { MemorySpendStore } from 'finrouter/finops'
 
-let router: FreeRouter | undefined
+let router: FinRouter | undefined
 
 async function getRouter() {
   if (router !== undefined) return router
-  router = new FreeRouter({
+  router = new FinRouter({
     masterKey: process.env.ROUTER_MASTER_KEY!,
     spendPersistence: {
       store: new MemorySpendStore(), // swap for S3SpendStore in production
@@ -637,13 +637,13 @@ export const handler = async (event: APIGatewayEvent) => {
 }
 ```
 
-### Environment variables used by FreeRouter
+### Environment variables used by FinRouter
 
 | Variable | Purpose |
 |---|---|
 | `ROUTER_MASTER_KEY` | 32-byte hex master key for AES-256-GCM key derivation |
-| `FREEROUTER_CONFIG` | Path to config file loaded by `FreeRouter.fromEnv()` |
-| `FREEROUTER_NEW_KEY` | New API key passed to the `freerouter rotate-key` CLI command |
+| `FINROUTER_CONFIG` | Path to config file loaded by `FinRouter.fromEnv()` |
+| `FINROUTER_NEW_KEY` | New API key passed to the `finrouter rotate-key` CLI command |
 
 ---
 
@@ -653,8 +653,8 @@ export const handler = async (event: APIGatewayEvent) => {
 
 **Scenario:** A 500-person tech company wants to give every engineer access to LLMs for coding assistance. Each engineer uses their own OpenAI or Anthropic key. Finance wants monthly budget caps per team, chargeback reporting, and to never pay for another team's overspend.
 
-**FreeRouter fit:**
-- Each engineer registers their key once via your portal. FreeRouter encrypts it immediately and stores only the ciphertext.
+**FinRouter fit:**
+- Each engineer registers their key once via your portal. FinRouter encrypts it immediately and stores only the ciphertext.
 - Budget policies cap spend per team per month. When engineering's $500/month cap is reached, further requests are downgraded to a cheaper model or blocked — sales team is unaffected.
 - At month-end, run `router.getChargebackReport({ type: 'org', orgId: 'acme' }, startOfMonth, endOfMonth)` and pipe `byTeam` into your ERP/billing system.
 - The `onBudgetWarning` hook sends a Slack alert to the team lead at 80%.
@@ -663,7 +663,7 @@ export const handler = async (event: APIGatewayEvent) => {
 
 **Scenario:** A startup builds a document analysis product. Each B2B customer brings their own Claude API key. The startup's infrastructure must not be able to read customer keys or accumulate customer LLM costs.
 
-**FreeRouter fit:**
+**FinRouter fit:**
 - Customer keys are stored with AES-256-GCM encryption, keyed to each customer's `userId`. The plaintext key never appears in logs or database rows.
 - Spend is tracked per `orgId` (customer org). If a customer's usage spikes (runaway loop, accidental mass-send), `onLimitReached: 'block'` protects the customer from a massive bill.
 - `getChargebackReport({ type: 'org', orgId: customerId })` powers the usage dashboard in the customer's account settings.
@@ -673,7 +673,7 @@ export const handler = async (event: APIGatewayEvent) => {
 
 **Scenario:** Legal discovers that a specific model version has a data retention policy that conflicts with the company's GDPR obligations. The model must be blocked immediately across all teams — no redeployment window available.
 
-**FreeRouter fit:**
+**FinRouter fit:**
 - Call `router.blockModel('openai', 'gpt-4o-2024-05-13')` on the running instance. All subsequent requests to that model version are rejected instantly.
 - Historical spend records and pricing data for that model are preserved (unlike `removeModel` which also strips pricing — useful for audit trails).
 - When legal clears the model, call `router.unblockModel('openai', 'gpt-4o-2024-05-13')` to restore routing.
@@ -683,9 +683,9 @@ export const handler = async (event: APIGatewayEvent) => {
 
 **Scenario:** A data team runs nightly summarisation jobs that process 50 000 support tickets. These jobs are not latency-sensitive but currently cost $800/night using GPT-4o.
 
-**FreeRouter fit:**
+**FinRouter fit:**
 - Configure `costOptimization: { strategy: 'cheapest', candidateModels: ['gpt-4o-mini', 'gemini-2.0-flash-lite'], batchOnly: true }`.
-- Tag all batch jobs with `priority: 'batch'`. FreeRouter automatically routes to the cheapest capable model — typically `gpt-4o-mini` at $0.15/1M input vs GPT-4o's $2.50/1M, a ~16× reduction.
+- Tag all batch jobs with `priority: 'batch'`. FinRouter automatically routes to the cheapest capable model — typically `gpt-4o-mini` at $0.15/1M input vs GPT-4o's $2.50/1M, a ~16× reduction.
 - Interactive user-facing requests use `priority: 'realtime'` and stay on GPT-4o.
 - `SpendForecaster` sends a `forecast:at-risk` alert if even the reduced batch spend is trending over the weekly cap.
 
@@ -693,16 +693,16 @@ export const handler = async (event: APIGatewayEvent) => {
 
 **Scenario:** A fintech runs a high-volume LLM pipeline. Anthropic has periodic API outages. When Anthropic is down, traffic must automatically reroute to OpenAI without a redeploy. Additionally, pricing changes frequently as both providers compete on rates.
 
-**FreeRouter fit:**
+**FinRouter fit:**
 - Register both providers. Set `defaultProvider: 'anthropic'` and configure a `downgrade` policy that falls back to an OpenAI model when the Anthropic budget is exhausted (or extend it with a health-check plugin that temporarily blocks the provider on repeated 5xx responses).
-- `HttpPricingSource` polls an internal pricing service every hour. When Anthropic drops input prices, FreeRouter automatically recalculates estimated costs and spend records reflect the new rates on the next refresh — no restart, no redeploy.
+- `HttpPricingSource` polls an internal pricing service every hour. When Anthropic drops input prices, FinRouter automatically recalculates estimated costs and spend records reflect the new rates on the next refresh — no restart, no redeploy.
 - `router.healthCheck()` exposes provider availability for your monitoring dashboard.
 
 ### Use case 6 — Value-based routing for differentiated tiers
 
 **Scenario:** A consulting firm pays for LLM access across legal, marketing, and engineering teams. Pure cost minimization is the wrong default — the legal team's contract review must use the highest-quality model available regardless of cost, marketing's bulk content generation should hit the cheapest viable model, and a `code-review` use-case across any team must always use a frontier model. Additionally, contractor accounts must never be allowed to call frontier models.
 
-**FreeRouter fit:**
+**FinRouter fit:**
 - Configure the rules engine in `pin-wins` mode with declarative match→action rules. Legal team gets `pin: claude-3-5-sonnet`. Code-review metadata gets `strategy: performance`. Contractor org + frontier model glob gets `block`.
 - Marketing falls through to the configured `costOptimization.strategy: 'cheapest'` for free.
 - Rules live in a JSON file managed by the platform admin. `FileRulesSource` polls every 60s — admins update routing policy without a redeploy.
@@ -713,7 +713,7 @@ export const handler = async (event: APIGatewayEvent) => {
 
 **Scenario:** A healthcare SaaS must demonstrate to auditors that no patient data was sent to an unapproved model and that all API key operations are logged.
 
-**FreeRouter fit:**
+**FinRouter fit:**
 - `allowedModels: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307']` rejects any request to an unlisted model before it leaves the process.
 - `blockedProviders: ['openai', 'google', 'mistral', 'groq']` ensures only Anthropic can be used.
 - Every `key:set`, `key:rotated`, `key:deleted`, `request:sent`, `request:blocked`, and `policy:violated` event writes a structured `AuditEntry` to your `AuditSink` (an append-only database table, SIEM, etc.).
@@ -738,7 +738,7 @@ The user or their team/org has exceeded the configured `maxSpendUsd` for the pol
 
 ### "Cannot determine provider for model X"
 
-FreeRouter can't resolve the model to a provider. Either:
+FinRouter can't resolve the model to a provider. Either:
 - Prefix the model: `"openai/gpt-4o"` instead of `"gpt-4o"`.
 - Set `defaultProvider: 'openai'` in the config.
 - Add a custom routing prefix via `config.providers['openai'].routingPrefixes`.
@@ -748,7 +748,7 @@ FreeRouter can't resolve the model to a provider. Either:
 You don't have a `SpendStore` configured, or `router.init()` wasn't called before the first request.
 
 ```typescript
-const router = new FreeRouter({ spendPersistence: { store: new FileSpendStore('./spend.json') } })
+const router = new FinRouter({ spendPersistence: { store: new FileSpendStore('./spend.json') } })
 await router.init() // load records from disk BEFORE first request
 ```
 
@@ -778,14 +778,14 @@ The `config-manager-web` pricing fetch uses Node's built-in `https` module, whic
 
 ### What is the Configuration Manager?
 
-A **fully optional, standalone web application** — Node/TypeScript with a Fastify API and React/Vite UI — that lets admins edit every piece of FreeRouter configuration without hand-editing JSON. It lives in [`config-manager-web/`](../config-manager-web/) at the repo root, completely outside `src/` and `dist/`. Because `package.json` publishes only the `dist/` directory, the manager never ships with the npm package; it is a tool for the operator's deployment, not a runtime dependency of the router.
+A **fully optional, standalone web application** — Node/TypeScript with a Fastify API and React/Vite UI — that lets admins edit every piece of FinRouter configuration without hand-editing JSON. It lives in [`config-manager-web/`](../config-manager-web/) at the repo root, completely outside `src/` and `dist/`. Because `package.json` publishes only the `dist/` directory, the manager never ships with the npm package; it is a tool for the operator's deployment, not a runtime dependency of the router.
 
 ### Why is it separate from the core router?
 
 Three reasons:
 
 - **Zero coupling.** The router has no awareness of the manager and works identically whether the manager exists or not. Deleting the `config-manager-web/` folder breaks nothing.
-- **Different deployment surface.** The web manager is a deployed, multi-user service with OIDC SSO and RBAC — a better fit for ops teams than a single-admin local desktop tool, and keeps FreeRouter's "zero runtime dependencies" promise intact for the core library.
+- **Different deployment surface.** The web manager is a deployed, multi-user service with OIDC SSO and RBAC — a better fit for ops teams than a single-admin local desktop tool, and keeps FinRouter's "zero runtime dependencies" promise intact for the core library.
 - **Excluded from dist.** The `package.json` `files` allowlist publishes only `dist/`; the web manager directory is never bundled into the npm package.
 
 ### How is admin access controlled?
@@ -793,12 +793,12 @@ Three reasons:
 OIDC SSO with role-based access control:
 
 - The server integrates with any OIDC-compliant IdP (Okta, Auth0, Azure AD, Google, etc.) via `OIDC_*` env vars.
-- Group membership maps to roles: `fr-admins` → `admin`, `fr-viewers` → `viewer`. Only `admin`-role sessions can write config.
+- Group membership maps to roles: `fin-admins` → `admin`, `fin-viewers` → `viewer`. Only `admin`-role sessions can write config.
 - Sessions are stored in an httpOnly, SameSite=Lax cookie signed with a `SESSION_SECRET`.
 
 ### What can I edit through the web UI?
 
-Everything that lives in `freerouter.config.json`, plus BYOK keys, pricing, optimization candidates, and an audit log:
+Everything that lives in `finrouter.config.json`, plus BYOK keys, pricing, optimization candidates, and an audit log:
 
 | Section | Fields |
 |---|---|
@@ -812,7 +812,7 @@ Everything that lives in `freerouter.config.json`, plus BYOK keys, pricing, opti
 | **Optimization** | Per-request `promptOptimization` and proactive `autoOptimization` settings (enable flags, target / fallback models, candidate + optimized-store paths) |
 | **Candidates** | Auto-optimization candidates panel — view ROI-ranked candidates, trigger optimization, multi-select delete, track status |
 | **Audit** | View the admin audit log — each entry shows a descriptive action ("Set BYOK key for …", "Optimized candidate …", etc.) |
-| **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FREEROUTER_CONFIG`, `FREEROUTER_NEW_KEY`, `PRICING_TOKEN`; multi-select delete |
+| **Env Vars** | Masked entry for `ROUTER_MASTER_KEY`, `FINROUTER_CONFIG`, `FINROUTER_NEW_KEY`, `PRICING_TOKEN`; multi-select delete |
 | **Reporting** | Read-only spend dashboard for the environment — totals (cost / requests / tokens), burn-rate and projected 30-day spend, and chargeback breakdowns by provider / model / user / team / department, with an All-time / 7 / 30 / 90-day window. Reads the spend records the runtime persists (telemetry JSONL or a `FileSpendStore` JSON) via the environment's optional `spend` path |
 
 ### How safe are the writes?
@@ -844,9 +844,9 @@ See `config-manager-web/README.md` for the full list of environment variables (i
 
 ### Does saving rules require a router restart?
 
-No. When the router is configured with `rulesRefresh: { source: new FileRulesSource('./freerouter.rules.json'), intervalMs: 60_000 }`, the next refresh tick after the web UI saves the file picks up the change automatically. The same is true for `FilePricingSource`.
+No. When the router is configured with `rulesRefresh: { source: new FileRulesSource('./finrouter.rules.json'), intervalMs: 60_000 }`, the next refresh tick after the web UI saves the file picks up the change automatically. The same is true for `FilePricingSource`.
 
-For the main `freerouter.config.json`, structural changes (new providers, changed budgets, etc.) still require a restart — same as if you'd hand-edited the file. The web UI is a *safer way to edit*, not a runtime injection mechanism.
+For the main `finrouter.config.json`, structural changes (new providers, changed budgets, etc.) still require a restart — same as if you'd hand-edited the file. The web UI is a *safer way to edit*, not a runtime injection mechanism.
 
 ### Can I keep using JSON / YAML / TOML files directly?
 
@@ -856,7 +856,7 @@ Yes. The Configuration Manager is purely a convenience for ops teams; it reads a
 
 The **BYOK Keys** section manages per-`(userId, provider)` API keys. Keys are accepted write-only — the secret is never returned after submission (the UI shows only the last 4 characters). The key is stored via the configured key backend (local AES-256-GCM-encrypted file, or an external Vault/AWS Secrets Manager/Azure Key Vault/GCP Secret Manager backend).
 
-**Runtime hookup.** The FreeRouter runtime expects keys via `router.setKey(userId, provider, key)` at startup. Your bootstrap code can call `router.setKey()` from whatever source you use; the web manager's BYOK storage is a managed staging area for the operator that is separate from the router's in-memory key store.
+**Runtime hookup.** The FinRouter runtime expects keys via `router.setKey(userId, provider, key)` at startup. Your bootstrap code can call `router.setKey()` from whatever source you use; the web manager's BYOK storage is a managed staging area for the operator that is separate from the router's in-memory key store.
 
 ### How do I fetch live model pricing from inside the web UI?
 
@@ -918,7 +918,7 @@ Cross-cutting summary of every built-in security control. Each row points at the
 | Default Chinese-provider deny-list | `providers/registry.ts` blocks DeepSeek, Qwen, Zhipu, etc. by default policy; cannot be re-registered without explicit override. |
 | Structured audit trail | Every `key:set`, `key:rotated`, `key:deleted`, `request:sent`, `request:blocked`, `policy:violated`, `model:added`, `model:removed`, `rule:matched` event produces a typed `AuditEntry`. Plug any sink via `AuditSink`. |
 | Config validator | `validateConfig()` runs on startup — rejects malformed budgets, invalid scope types, non-hex master keys, etc. before the router accepts any request. |
-| Configuration Manager auth | Web app (`config-manager-web`) uses OIDC SSO with role-based access control (`fr-admins` / `fr-viewers` groups). Session via httpOnly cookie; all write endpoints require the `admin` role. |
+| Configuration Manager auth | Web app (`config-manager-web`) uses OIDC SSO with role-based access control (`fin-admins` / `fin-viewers` groups). Session via httpOnly cookie; all write endpoints require the `admin` role. |
 | BYOK keystore security | Config Manager (`config-manager-web`) accepts keys write-only — the secret is never returned after submission. Stored via the configured key backend (local AES-256-GCM, or Vault/AWS/Azure/GCP). |
 | TLS verification (Config Manager) | Pricing fetch in `config-manager-web` delegates to the server's `HttpPricingSource` (Node `https` module with default TLS verification). |
 

@@ -108,7 +108,7 @@ export class AnthropicProvider extends BaseProvider {
     })
 
     if (!resp.ok) await this.throwHttpError(resp, this.name)
-    if (resp.body === null) throw new Error('[FreeRouter/anthropic] Empty stream body')
+    if (resp.body === null) throw new Error('[FinRouter/anthropic] Empty stream body')
 
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()

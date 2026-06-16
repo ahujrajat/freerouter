@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 import type { BaseProvider } from '../src/providers/base-provider.js'
 import type { ChatRequest, ChatResponse, StreamChunk } from '../src/types.js'
 
@@ -42,10 +42,10 @@ class MockProvider implements BaseProvider {
 }
 
 describe('Hot-reload — addProvider / removeProvider', () => {
-  let router: FreeRouter
+  let router: FinRouter
 
   beforeEach(() => {
-    router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    router = new FinRouter({ masterKey, audit: { enabled: false } })
     vi.stubGlobal('fetch', makeGeminiMock())
   })
 
@@ -174,10 +174,10 @@ describe('Hot-reload — addProvider / removeProvider', () => {
 })
 
 describe('Hot-reload — addModel / removeModel', () => {
-  let router: FreeRouter
+  let router: FinRouter
 
   beforeEach(() => {
-    router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    router = new FinRouter({ masterKey, audit: { enabled: false } })
     vi.stubGlobal('fetch', makeGeminiMock())
   })
 
@@ -230,14 +230,14 @@ describe('Hot-reload — addModel / removeModel', () => {
 
 describe('Plugin system', () => {
   it('use() calls plugin.install()', () => {
-    const router = new FreeRouter({ audit: { enabled: false } })
+    const router = new FinRouter({ audit: { enabled: false } })
     const install = vi.fn()
     router.use({ name: 'test-plugin', install })
     expect(install).toHaveBeenCalledWith(router)
   })
 
   it('use() deduplicates by name', () => {
-    const router = new FreeRouter({ audit: { enabled: false } })
+    const router = new FinRouter({ audit: { enabled: false } })
     const install = vi.fn()
     const plugin = { name: 'dedup-plugin', install }
     router.use(plugin).use(plugin)
@@ -245,7 +245,7 @@ describe('Plugin system', () => {
   })
 
   it('use() returns this for chaining', () => {
-    const router = new FreeRouter({ audit: { enabled: false } })
+    const router = new FinRouter({ audit: { enabled: false } })
     const result = router.use({ name: 'chain-plugin', install: vi.fn() })
     expect(result).toBe(router)
   })
@@ -253,7 +253,7 @@ describe('Plugin system', () => {
 
 describe('Health & Metrics', () => {
   it('healthCheck() returns healthy when all providers available', () => {
-    const router = new FreeRouter({ audit: { enabled: false } })
+    const router = new FinRouter({ audit: { enabled: false } })
     const health = router.healthCheck()
     expect(health.status).toBe('healthy')
     expect(health.providers.length).toBeGreaterThan(0)
@@ -261,7 +261,7 @@ describe('Health & Metrics', () => {
   })
 
   it('healthCheck() returns degraded after a provider is removed', async () => {
-    const router = new FreeRouter({ audit: { enabled: false } })
+    const router = new FinRouter({ audit: { enabled: false } })
     await router.removeProvider('groq', { force: true })
     const health = router.healthCheck()
     expect(health.status).toBe('degraded')
@@ -270,7 +270,7 @@ describe('Health & Metrics', () => {
   })
 
   it('metrics() returns zero-counts for a fresh router', () => {
-    const router = new FreeRouter({ audit: { enabled: false } })
+    const router = new FinRouter({ audit: { enabled: false } })
     const m = router.metrics()
     expect(m.requests.total).toBe(0)
     expect(m.errorRate).toBe(0)
@@ -278,7 +278,7 @@ describe('Health & Metrics', () => {
   })
 
   it('metrics() increments after a chat request', async () => {
-    const router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    const router = new FinRouter({ masterKey, audit: { enabled: false } })
     vi.stubGlobal('fetch', makeGeminiMock())
     router.setKey('u1', 'google', 'key')
     await router.chat('u1', { model: 'gemini-2.0-flash', messages: [{ role: 'user', content: 'hi' }] })

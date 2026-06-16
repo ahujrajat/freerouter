@@ -1,4 +1,4 @@
-"""HTTP sidecar invoked by FreeRouter's `GepaBridge`.
+"""HTTP sidecar invoked by FinRouter's `GepaBridge`.
 
 Endpoints:
 - POST /optimize → evolves a system prompt for a request class using GEPA.
@@ -110,7 +110,7 @@ class TargetCaller:
     """Calls the cheap target model with a candidate system prompt to score it.
 
     Production-ready: uses Anthropic's API for Claude target models; for
-    OpenAI-family targets, point this at the real provider via FreeRouter's
+    OpenAI-family targets, point this at the real provider via FinRouter's
     chat() (which the sidecar can invoke through a deployment-side adapter).
     For Phase 1, we support Anthropic-targets directly; non-Anthropic targets
     raise `NotImplementedError` with guidance.
@@ -128,7 +128,7 @@ class TargetCaller:
             raise NotImplementedError(
                 f"TargetCaller currently invokes Anthropic models directly; "
                 f"to use target_model={target_model!r}, point the sidecar at "
-                "your FreeRouter HTTP endpoint instead and replace this method "
+                "your FinRouter HTTP endpoint instead and replace this method "
                 "with that HTTP call."
             )
         model = target_model.removeprefix("anthropic/")
@@ -176,7 +176,7 @@ def configure(
 
 # ── App ─────────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="FreeRouter GEPA sidecar")
+app = FastAPI(title="FinRouter GEPA sidecar")
 
 
 @app.get("/health")

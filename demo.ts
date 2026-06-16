@@ -1,12 +1,12 @@
 /**
- * FreeRouter — Live Demo with Google Gemini
+ * FinRouter — Live Demo with Google Gemini
  *
  * Usage:
  *   set GEMINI_API_KEY=your_key_here
  *   npx tsx demo.ts
  */
 
-import { FreeRouter } from './src/index.js'
+import { FinRouter } from './src/index.js'
 
 const apiKey = process.env['GEMINI_API_KEY']
 if (!apiKey) {
@@ -15,7 +15,7 @@ if (!apiKey) {
 }
 
 // ─── Router configuration ──────────────────────────────────────────
-const router = new FreeRouter({
+const router = new FinRouter({
   defaultProvider: 'google',
   promptInjectionGuard: true,
   audit: {

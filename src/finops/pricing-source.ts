@@ -5,7 +5,7 @@ import type { ModelPricingEntry } from '../types.js'
 /**
  * Shape of the remote pricing manifest.
  *
- * Keys are provider names matching FreeRouter's registry ("openai", "anthropic", etc.).
+ * Keys are provider names matching FinRouter's registry ("openai", "anthropic", etc.).
  * Inner keys are model IDs as used by the provider's API.
  *
  * Example JSON:
@@ -101,14 +101,14 @@ export class HttpPricingSource implements PricingSource {
           res.on('end', () => {
             const status = res.statusCode ?? 0
             if (status < 200 || status >= 300) {
-              reject(new Error(`[FreeRouter] PricingSource HTTP ${status}: ${this.url}`))
+              reject(new Error(`[FinRouter] PricingSource HTTP ${status}: ${this.url}`))
               return
             }
             let parsedBody: unknown
             try {
               parsedBody = JSON.parse(body)
             } catch {
-              reject(new Error(`[FreeRouter] PricingSource: invalid JSON from ${this.url}`))
+              reject(new Error(`[FinRouter] PricingSource: invalid JSON from ${this.url}`))
               return
             }
             try {
@@ -123,7 +123,7 @@ export class HttpPricingSource implements PricingSource {
 
       req.on('error', reject)
       req.setTimeout(this.options.timeoutMs ?? 10_000, () => {
-        req.destroy(new Error(`[FreeRouter] PricingSource timeout: ${this.url}`))
+        req.destroy(new Error(`[FinRouter] PricingSource timeout: ${this.url}`))
       })
       req.end()
     })
@@ -146,7 +146,7 @@ export class StaticPricingSource implements PricingSource {
 const identityTransform: PricingTransform = raw => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error(
-      '[FreeRouter] PricingSource: response must be a JSON object shaped like ' +
+      '[FinRouter] PricingSource: response must be a JSON object shaped like ' +
         '{ provider: { modelId: { input, output, ... } } }',
     )
   }
@@ -157,7 +157,7 @@ const identityTransform: PricingTransform = raw => {
  * Transform LiteLLM's `model_prices_and_context_window.json` into a PricingManifest.
  *
  * LiteLLM stores prices as USD per token (very small floats); we multiply by 1e6
- * to match FreeRouter's USD-per-1M-tokens convention. Models are grouped by
+ * to match FinRouter's USD-per-1M-tokens convention. Models are grouped by
  * the `litellm_provider` field. The `sample_spec` pseudo-entry is skipped.
  *
  * Source URL: see {@link LITELLM_PRICING_URL}.
@@ -166,7 +166,7 @@ const identityTransform: PricingTransform = raw => {
  */
 export const transformLiteLLM: PricingTransform = raw => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
-    throw new Error('[FreeRouter] LiteLLM source must be a JSON object')
+    throw new Error('[FinRouter] LiteLLM source must be a JSON object')
   }
   const out: PricingManifest = {}
   for (const [modelId, entryRaw] of Object.entries(raw as Record<string, unknown>)) {
@@ -194,7 +194,7 @@ export const transformLiteLLM: PricingTransform = raw => {
     out[provider]![modelId] = pricing
   }
   if (Object.keys(out).length === 0) {
-    throw new Error('[FreeRouter] LiteLLM source contained no usable price entries')
+    throw new Error('[FinRouter] LiteLLM source contained no usable price entries')
   }
   return out
 }
@@ -213,11 +213,11 @@ export const transformLiteLLM: PricingTransform = raw => {
  */
 export const transformOpenRouter: PricingTransform = raw => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
-    throw new Error('[FreeRouter] OpenRouter response must be a JSON object')
+    throw new Error('[FinRouter] OpenRouter response must be a JSON object')
   }
   const data = (raw as { data?: unknown }).data
   if (!Array.isArray(data)) {
-    throw new Error("[FreeRouter] OpenRouter response must have a top-level 'data' array")
+    throw new Error("[FinRouter] OpenRouter response must have a top-level 'data' array")
   }
   const out: PricingManifest = {}
   for (const entryRaw of data) {
@@ -246,7 +246,7 @@ export const transformOpenRouter: PricingTransform = raw => {
     out[provider]![modelId] = pricing
   }
   if (Object.keys(out).length === 0) {
-    throw new Error('[FreeRouter] OpenRouter response contained no priced models')
+    throw new Error('[FinRouter] OpenRouter response contained no priced models')
   }
   return out
 }
@@ -272,7 +272,7 @@ export const OPENROUTER_PRICING_URL = 'https://openrouter.ai/api/v1/models'
  * Convenience: an `HttpPricingSource` preconfigured for LiteLLM's manifest.
  *
  * @example
- *   new FreeRouter({
+ *   new FinRouter({
  *     pricingRefresh: { source: liteLLMPricingSource(), intervalMs: 3_600_000 },
  *   })
  */
@@ -290,7 +290,7 @@ export function liteLLMPricingSource(
  * `/v1/models` API.
  *
  * @example
- *   new FreeRouter({
+ *   new FinRouter({
  *     pricingRefresh: { source: openRouterPricingSource(), intervalMs: 3_600_000 },
  *   })
  */

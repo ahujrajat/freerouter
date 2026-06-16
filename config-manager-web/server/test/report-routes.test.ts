@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildTestApp, cookieHeader } from './helpers.js'
-import type { SpendRecord } from 'freerouter'
+import type { SpendRecord } from 'finrouter'
 
 async function login(app: Awaited<ReturnType<typeof buildTestApp>>): Promise<string> {
   const l = await app.inject({ method: 'GET', url: '/auth/login' })

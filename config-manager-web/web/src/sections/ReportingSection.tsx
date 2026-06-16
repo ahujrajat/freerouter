@@ -45,7 +45,7 @@ export function ReportingSection({ envId }: { envId: string; canWrite: boolean }
         <h2>Reporting</h2>
         <div className="banner banner--info" role="status">
           No spend data source is configured for this environment. Add a <code>spend</code> path
-          (a telemetry JSONL file or a FileSpendStore JSON file the FreeRouter runtime writes) to this
+          (a telemetry JSONL file or a FileSpendStore JSON file the FinRouter runtime writes) to this
           environment in <code>environments.json</code> to enable reporting.
         </div>
       </div>

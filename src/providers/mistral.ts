@@ -62,7 +62,7 @@ export class MistralProvider extends BaseProvider {
     if (!resp.ok) await this.throwHttpError(resp, this.name)
     const data = (await resp.json()) as MistralResponse
     const choice = data.choices[0]
-    if (choice === undefined) throw new Error('[FreeRouter/mistral] No choices returned')
+    if (choice === undefined) throw new Error('[FinRouter/mistral] No choices returned')
 
     const usage: TokenUsage = {
       promptTokens: data.usage.prompt_tokens,
@@ -99,7 +99,7 @@ export class MistralProvider extends BaseProvider {
     })
 
     if (!resp.ok) await this.throwHttpError(resp, this.name)
-    if (resp.body === null) throw new Error('[FreeRouter/mistral] Empty stream body')
+    if (resp.body === null) throw new Error('[FinRouter/mistral] Empty stream body')
 
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()

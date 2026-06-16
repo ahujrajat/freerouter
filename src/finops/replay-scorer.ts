@@ -340,7 +340,7 @@ export class ReplayScorer {
   }
 
   /**
-   * Mirror of `FreeRouter.applyRuleAndCost` — kept in parity by the
+   * Mirror of `FinRouter.applyRuleAndCost` — kept in parity by the
    * `replay-scorer.test.ts` dual-runner test against the live router.
    */
   private applyRuleAndCost(req: ChatRequest, ruleDecision: RuleDecision): string {

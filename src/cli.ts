@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * freerouter CLI
+ * finrouter CLI
  *
  * Commands:
  *   validate-config <path>
@@ -10,7 +10,7 @@
 
 import { validateConfig } from './config-validator.js'
 import { loadConfigFile } from './config-loader.js'
-import { FreeRouter } from './router.js'
+import { FinRouter } from './router.js'
 
 function parseArgs(argv: string[]): {
   command: string
@@ -49,7 +49,7 @@ function parseArgs(argv: string[]): {
 async function cmdValidateConfig(args: string[]): Promise<void> {
   const filePath = args[0]
   if (filePath === undefined || filePath === '') {
-    process.stderr.write('Usage: freerouter validate-config <path>\n')
+    process.stderr.write('Usage: finrouter validate-config <path>\n')
     process.exit(1)
   }
 
@@ -81,11 +81,11 @@ async function cmdValidateConfig(args: string[]): Promise<void> {
 }
 
 async function cmdListProviders(configPath: string | undefined): Promise<void> {
-  let router: FreeRouter
+  let router: FinRouter
   if (configPath !== undefined) {
-    router = await FreeRouter.fromFile(configPath)
+    router = await FinRouter.fromFile(configPath)
   } else {
-    router = new FreeRouter()
+    router = new FinRouter()
   }
   const providers = router.listProviders()
   if (providers.length === 0) {
@@ -100,7 +100,7 @@ async function cmdListProviders(configPath: string | undefined): Promise<void> {
 async function cmdRotateKey(flags: Record<string, string>, configPath: string | undefined): Promise<void> {
   const userId = flags['user']
   const providerName = flags['provider']
-  const newKey = process.env['FREEROUTER_NEW_KEY']
+  const newKey = process.env['FINROUTER_NEW_KEY']
 
   if (userId === undefined || userId === '') {
     process.stderr.write('Error: --user <userId> is required\n')
@@ -111,15 +111,15 @@ async function cmdRotateKey(flags: Record<string, string>, configPath: string | 
     process.exit(1)
   }
   if (newKey === undefined || newKey === '') {
-    process.stderr.write('Error: FREEROUTER_NEW_KEY env var must be set (new API key)\n')
+    process.stderr.write('Error: FINROUTER_NEW_KEY env var must be set (new API key)\n')
     process.exit(1)
   }
 
-  let router: FreeRouter
+  let router: FinRouter
   if (configPath !== undefined) {
-    router = await FreeRouter.fromFile(configPath)
+    router = await FinRouter.fromFile(configPath)
   } else {
-    router = new FreeRouter()
+    router = new FinRouter()
   }
 
   router.rotateKey(userId, providerName, newKey)
@@ -141,11 +141,11 @@ async function main(): Promise<void> {
       break
     default:
       process.stdout.write(
-        'freerouter CLI\n\n' +
+        'finrouter CLI\n\n' +
         'Commands:\n' +
         '  validate-config <path>                   Validate a config file\n' +
         '  list-providers [--config <path>]         List registered providers\n' +
-        '  rotate-key --user <id> --provider <name> Rotate an API key (reads from FREEROUTER_NEW_KEY env)\n',
+        '  rotate-key --user <id> --provider <name> Rotate an API key (reads from FINROUTER_NEW_KEY env)\n',
       )
       if (command !== '' && command !== 'help') process.exit(1)
   }

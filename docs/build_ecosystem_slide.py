@@ -1,6 +1,7 @@
 """Build a single-slide PPTX of the Integrated AI Development Ecosystem diagram
 in the Accenture brand style.
 """
+from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
@@ -369,7 +370,7 @@ def main():
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
     build_ecosystem_slide(prs)
-    out = "/Users/rajat.a.ahuja/Dev/FreeRouter/docs/Integrated-AI-Development-Ecosystem.pptx"
+    out = str(Path(__file__).parent / "Integrated-AI-Development-Ecosystem.pptx")
     prs.save(out)
     print(f"Wrote {out}")
 

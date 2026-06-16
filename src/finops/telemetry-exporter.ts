@@ -50,7 +50,7 @@ export class TelemetryExporter {
     this.maxBufferSize = opts.maxBufferSize ?? 10_000
     this.onDrop = opts.onDrop ?? ((count, reason, err) => {
       const detail = err !== undefined ? `: ${String(err)}` : ''
-      process.stderr.write(`[FreeRouter] telemetry ${reason} dropped ${count} record(s)${detail}\n`)
+      process.stderr.write(`[FinRouter] telemetry ${reason} dropped ${count} record(s)${detail}\n`)
     })
   }
 

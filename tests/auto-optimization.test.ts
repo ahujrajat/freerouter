@@ -259,7 +259,7 @@ describe('CandidateDetector', () => {
   })
 })
 
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 import type { BaseProvider } from '../src/providers/base-provider.js'
 
 class FakeProvider {
@@ -275,7 +275,7 @@ class FakeProvider {
   pricing(_model: string) { return { input: 2.5, output: 10 } }
 }
 
-describe('FreeRouter auto-optimization injection', () => {
+describe('FinRouter auto-optimization injection', () => {
   let dir: string
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'fr-router-')) })
   afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
@@ -289,7 +289,7 @@ describe('FreeRouter auto-optimization injection', () => {
       predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1,
     }]), 'utf-8')
 
-    const router = new FreeRouter({
+    const router = new FinRouter({
       autoOptimization: {
         enabled: true, candidatesPath: join(dir, 'candidates.json'),
         optimizedStorePath: storePath, referencesDir: join(dir, 'refs'),
@@ -311,7 +311,7 @@ describe('FreeRouter auto-optimization injection', () => {
       fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'OPTIMIZED', qualityScore: 0.9,
       predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1,
     }]), 'utf-8')
-    const router = new FreeRouter({
+    const router = new FinRouter({
       autoOptimization: {
         enabled: true, candidatesPath: join(dir, 'candidates.json'),
         optimizedStorePath: storePath, referencesDir: join(dir, 'refs'),

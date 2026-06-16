@@ -1,7 +1,7 @@
-# freerouter-gepa-sidecar
+# finrouter-gepa-sidecar
 
 Python sidecar implementing the offline (Phase 1–5) and per-request (Phase 6–8)
-GEPA optimization pipelines documented in the FreeRouter integration plan.
+GEPA optimization pipelines documented in the FinRouter integration plan.
 
 ## Layout
 
@@ -33,10 +33,10 @@ tsx scripts/emit-config-schema.ts
 
 # Run the optimizer against a telemetry capture.
 python -m gepa_sidecar.optimize_config \
-  --seed       ./freerouter.config.json \
+  --seed       ./finrouter.config.json \
   --telemetry  ./telemetry/spend.jsonl \
   --pricing    ./pricing-snapshot.json \
-  --out        ./freerouter.config.optimized.json \
+  --out        ./finrouter.config.optimized.json \
   --budget     medium
 ```
 

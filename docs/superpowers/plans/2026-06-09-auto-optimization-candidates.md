@@ -799,10 +799,10 @@ git commit -m "feat: add autoOptimization config block"
 
 - [ ] **Step 1: Write the failing integration test**
 
-Append to `tests/auto-optimization.test.ts`. This uses a fake provider and exercises the public `FreeRouter.chat` path:
+Append to `tests/auto-optimization.test.ts`. This uses a fake provider and exercises the public `FinRouter.chat` path:
 
 ```ts
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 import type { BaseProvider } from '../src/providers/base-provider.js'
 
 class FakeProvider {
@@ -817,7 +817,7 @@ class FakeProvider {
   async *chatStream(): AsyncGenerator<any> { /* unused */ }
 }
 
-describe('FreeRouter auto-optimization injection', () => {
+describe('FinRouter auto-optimization injection', () => {
   let dir: string
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'fr-router-')) })
   afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
@@ -831,7 +831,7 @@ describe('FreeRouter auto-optimization injection', () => {
       predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1,
     }]), 'utf-8')
 
-    const router = new FreeRouter({
+    const router = new FinRouter({
       autoOptimization: {
         enabled: true, candidatesPath: join(dir, 'candidates.json'),
         optimizedStorePath: storePath, referencesDir: join(dir, 'refs'),
@@ -853,7 +853,7 @@ describe('FreeRouter auto-optimization injection', () => {
       fingerprint: `eh:gpt-4o:${sh}`, simhash: sh, template: 'OPTIMIZED', qualityScore: 0.9,
       predictedSavingsUsd: 0.1, targetModel: 'gpt-4o-mini', optimizedAt: 1,
     }]), 'utf-8')
-    const router = new FreeRouter({
+    const router = new FinRouter({
       autoOptimization: {
         enabled: true, candidatesPath: join(dir, 'candidates.json'),
         optimizedStorePath: storePath, referencesDir: join(dir, 'refs'),
@@ -982,7 +982,7 @@ with:
 
 - [ ] **Step 7: Add the local `injectSystem` helper**
 
-In `src/router.ts`, add a private method to the `FreeRouter` class (place it just before the `chat(` method at line 554). This mirrors `OptimizationPipeline.injectSystemPrompt` so the router doesn't depend on a pipeline instance that may be undefined:
+In `src/router.ts`, add a private method to the `FinRouter` class (place it just before the `chat(` method at line 554). This mirrors `OptimizationPipeline.injectSystemPrompt` so the router doesn't depend on a pipeline instance that may be undefined:
 
 ```ts
   private injectSystem(messages: ChatRequest['messages'], systemPrompt: string): ChatRequest['messages'] {

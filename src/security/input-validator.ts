@@ -60,7 +60,7 @@ export class InputValidator {
       const bare = model.includes('/') ? model.split('/')[1] : model
       if (bare === undefined || !this.isModelAllowed(bare, model)) {
         throw new Error(
-          `[FreeRouter/InputValidator] Model "${model}" is not in the allowed model list.`,
+          `[FinRouter/InputValidator] Model "${model}" is not in the allowed model list.`,
         )
       }
     }
@@ -81,7 +81,7 @@ export class InputValidator {
       totalLength += msg.content.length
       if (totalLength > this.maxInputLength) {
         throw new Error(
-          `[FreeRouter/InputValidator] Total input length (${totalLength}) exceeds maximum (${this.maxInputLength} chars).`,
+          `[FinRouter/InputValidator] Total input length (${totalLength}) exceeds maximum (${this.maxInputLength} chars).`,
         )
       }
 
@@ -98,7 +98,7 @@ export class InputValidator {
     for (const pattern of INJECTION_PATTERNS) {
       if (pattern.test(normalized) || pattern.test(content)) {
         throw new Error(
-          `[FreeRouter/InputValidator] Potential prompt injection detected. ` +
+          `[FinRouter/InputValidator] Potential prompt injection detected. ` +
           `If this is a false positive, disable promptInjectionGuard in config.`,
         )
       }
@@ -107,7 +107,7 @@ export class InputValidator {
     for (const pattern of NESTED_ENCODING_PATTERNS) {
       if (pattern.test(content)) {
         throw new Error(
-          `[FreeRouter/InputValidator] Encoded injection pattern detected in message content.`,
+          `[FinRouter/InputValidator] Encoded injection pattern detected in message content.`,
         )
       }
     }

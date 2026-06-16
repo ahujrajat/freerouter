@@ -17,7 +17,7 @@ export interface RedisEvalClientLike {
  *
  * Drop-in replacement for RateLimiter — implements RateLimiterLike.
  *
- * Pass to FreeRouter via config if you need distributed rate limiting:
+ * Pass to FinRouter via config if you need distributed rate limiting:
  *   const limiter = new RedisRateLimiter(redisClient, config)
  *   // Then wire into router internals via the rateLimiter constructor option (advanced use)
  */
@@ -49,7 +49,7 @@ export class RedisRateLimiter implements RateLimiterLike {
       tokensPerMinute:   config.tokensPerMinute   ?? config.requestsPerMinute * 1_000,
       burstAllowance:    config.burstAllowance     ?? 0.1,
     }
-    this.prefix = opts.keyPrefix ?? 'freerouter:rl:'
+    this.prefix = opts.keyPrefix ?? 'finrouter:rl:'
   }
 
   check(_key: string, _estimatedTokens = 0): { allowed: boolean; reason?: string } {
@@ -99,7 +99,7 @@ export class RedisRateLimiter implements RateLimiterLike {
       String(this.windowMs),
     ).catch((err: unknown) => {
       // Fall back gracefully — log but don't block the request
-      process.stderr.write(`[FreeRouter/RedisRateLimiter] eval error (falling back): ${String(err)}\n`)
+      process.stderr.write(`[FinRouter/RedisRateLimiter] eval error (falling back): ${String(err)}\n`)
       // Non-atomic fallback: best-effort INCR
       this.client.set(reqKey, '1', { EX: 60, NX: true }).catch(() => undefined)
     })

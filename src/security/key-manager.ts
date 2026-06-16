@@ -71,7 +71,7 @@ export class KeyManager {
     }
 
     if (this.masterKey.length !== 32) {
-      throw new Error('[FreeRouter/KeyManager] masterKey must be exactly 32 bytes (256 bits)')
+      throw new Error('[FinRouter/KeyManager] masterKey must be exactly 32 bytes (256 bits)')
     }
 
     this.expiryMs = opts.keyExpiryMs
@@ -110,7 +110,7 @@ export class KeyManager {
     const blob = this.store.get(userId, provider)
     if (blob === undefined) {
       throw new Error(
-        `[FreeRouter/KeyManager] No API key set for user "${userId}" / provider "${provider}"`,
+        `[FinRouter/KeyManager] No API key set for user "${userId}" / provider "${provider}"`,
       )
     }
 
@@ -119,7 +119,7 @@ export class KeyManager {
       if (age > this.expiryMs) {
         this.store.delete(userId, provider)
         throw new Error(
-          `[FreeRouter/KeyManager] API key for user "${userId}" / provider "${provider}" has expired`,
+          `[FinRouter/KeyManager] API key for user "${userId}" / provider "${provider}" has expired`,
         )
       }
     }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { FreeRouter } from '../src/router.js'
+import { FinRouter } from '../src/router.js'
 import { createMiddleware } from '../src/adapters/middleware.js'
 
 const masterKey = Buffer.alloc(32, 'd').toString('hex')
@@ -38,11 +38,11 @@ function makeMockRes() {
 }
 
 describe('createMiddleware', () => {
-  let router: FreeRouter
+  let router: FinRouter
   let middleware: ReturnType<typeof createMiddleware>
 
   beforeEach(() => {
-    router = new FreeRouter({ masterKey, audit: { enabled: false } })
+    router = new FinRouter({ masterKey, audit: { enabled: false } })
     router.setKey('anonymous', 'google', 'fake-key')
     vi.stubGlobal('fetch', makeGeminiMock())
     middleware = createMiddleware(router)

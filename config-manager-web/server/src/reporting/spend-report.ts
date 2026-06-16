@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import type { SpendRecord } from 'freerouter'
+import type { SpendRecord } from 'finrouter'
 
 export interface Bucket { key: string; costUsd: number; requests: number; tokens: number }
 export interface SpendReport {

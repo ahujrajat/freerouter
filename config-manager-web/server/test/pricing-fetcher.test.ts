@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { LibraryPricingFetcher } from '../src/pricing/pricing-fetcher.js'
-import type { PricingSource } from 'freerouter'
+import type { PricingSource } from 'finrouter'
 
 function fakeSource(manifest: Record<string, unknown>): PricingSource {
   return { fetch: async () => manifest as never }

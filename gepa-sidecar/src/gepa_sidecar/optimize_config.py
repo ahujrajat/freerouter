@@ -21,7 +21,7 @@ from .replay_evaluator import ReplayContext, make_evaluator
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Optimize a FreeRouter config with GEPA.")
+    parser = argparse.ArgumentParser(description="Optimize a FinRouter config with GEPA.")
     parser.add_argument("--seed", required=True, help="path to seed candidate JSON")
     parser.add_argument("--telemetry", required=True, help="JSONL telemetry file (FileTelemetrySink output)")
     parser.add_argument("--pricing", required=True, help="pricing snapshot JSON (ReplayPricingMap)")
@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
         evaluator=evaluator,
         objective=args.objective,
         background=(
-            "The artifact is a FreeRouter routing config (TS). "
+            "The artifact is a FinRouter routing config (TS). "
             "GEPA evaluates candidates via the real router's logic over a "
             "replay of historical SpendRecords. Block rate on realtime requests "
             "MUST stay below 1%."

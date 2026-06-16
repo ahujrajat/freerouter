@@ -2,7 +2,7 @@ import type { AuditAction, AuditEntry, AuditSink } from '../types.js'
 
 /**
  * Default sink: structured JSON to stdout.
- * Container-friendly — logs are never written to disk by FreeRouter itself.
+ * Container-friendly — logs are never written to disk by FinRouter itself.
  */
 const stdoutSink: AuditSink = {
   write(entry: AuditEntry): void {
@@ -34,7 +34,7 @@ export class AuditLogger {
     const result = this.sink.write(full)
     if (result instanceof Promise) {
       result.catch((err: unknown) => {
-        process.stderr.write(`[FreeRouter/AuditLogger] Sink error: ${String(err)}\n`)
+        process.stderr.write(`[FinRouter/AuditLogger] Sink error: ${String(err)}\n`)
       })
     }
   }

@@ -207,7 +207,7 @@ import type { SidecarClient } from '../../server/src/optimization/sidecar-client
 // so /auth/login completes the loop without a real IdP.
 class FakeOidc implements OidcProvider {
   authUrl(req: AuthRequest): string { return `${req.redirectUri}?code=fake&state=${req.state}` }
-  async exchange(): Promise<Claims> { return { sub: 'e2e-admin', name: 'E2E Admin', groups: ['fr-admins'] } }
+  async exchange(): Promise<Claims> { return { sub: 'e2e-admin', name: 'E2E Admin', groups: ['fin-admins'] } }
 }
 
 const fakePricing: PricingFetcher = { async fetch() { return { google: { 'gemini-2.5-flash': { input: 0.075, output: 0.3 } } } } }
@@ -230,7 +230,7 @@ export async function startHarness(port: number): Promise<{ close: () => Promise
     sessionSecret: 'e'.repeat(32),
     oidc: new FakeOidc(),
     environments: EnvironmentRegistry.load(envFile),
-    roles: new RoleResolver({ defaults: { 'fr-admins': 'admin', 'fr-viewers': 'viewer' } }),
+    roles: new RoleResolver({ defaults: { 'fin-admins': 'admin', 'fin-viewers': 'viewer' } }),
     audit: new AuditLog(join(dir, 'audit.jsonl')),
     redirectUri: `http://127.0.0.1:${port}/auth/callback`,
     afterLoginRedirect: '/',
@@ -383,14 +383,14 @@ Only proceed once Tasks 1–3 are complete and the web tool is verified (server 
 - [ ] **Step 1: Delete the Python tool**
 
 Run (from repo root): `git rm -r config-manager`
-Expected: removes `config-manager/app.py`, `freerouter_admin.py`, `auth.py`, `byok_io.py`, `candidates_io.py`, `config_io.py`, `pricing_fetcher.py`, `prefs.py`, `validators.py`, `test_candidates_io.py`, etc.
+Expected: removes `config-manager/app.py`, `finrouter_admin.py`, `auth.py`, `byok_io.py`, `candidates_io.py`, `config_io.py`, `pricing_fetcher.py`, `prefs.py`, `validators.py`, `test_candidates_io.py`, etc.
 
 - [ ] **Step 2: Update `README.md`**
 
-Replace the standalone-Python-manager section (around the lines describing `python3 config-manager/freerouter_admin.py`) with a description of the web manager. Find the block beginning "For operators who'd rather click than hand-edit JSON, FreeRouter ships an **optional, fully standalone** desktop configuration manager at [config-manager/]..." and replace it with:
+Replace the standalone-Python-manager section (around the lines describing `python3 config-manager/finrouter_admin.py`) with a description of the web manager. Find the block beginning "For operators who'd rather click than hand-edit JSON, FinRouter ships an **optional, fully standalone** desktop configuration manager at [config-manager/]..." and replace it with:
 
 ```markdown
-For operators who'd rather click than hand-edit JSON, FreeRouter has an **optional, fully standalone** web configuration manager at [config-manager-web/](config-manager-web/). It is deliberately excluded from the published npm package (the `files: ["dist"]` allowlist ships only compiled router code), so the runtime has zero dependency on it. It is a deployed, multi-user app (Node/TypeScript + Fastify API, React/Vite UI) with OIDC SSO, role-based access control, multiple environments, optimistic-locked config editing, write-only BYOK (local-encrypted or Vault/AWS/Azure/GCP key managers), pricing fetch, an auto-optimization candidates panel, and an audit log.
+For operators who'd rather click than hand-edit JSON, FinRouter has an **optional, fully standalone** web configuration manager at [config-manager-web/](config-manager-web/). It is deliberately excluded from the published npm package (the `files: ["dist"]` allowlist ships only compiled router code), so the runtime has zero dependency on it. It is a deployed, multi-user app (Node/TypeScript + Fastify API, React/Vite UI) with OIDC SSO, role-based access control, multiple environments, optimistic-locked config editing, write-only BYOK (local-encrypted or Vault/AWS/Azure/GCP key managers), pricing fetch, an auto-optimization candidates panel, and an audit log.
 
 ```bash
 cd config-manager-web
@@ -406,7 +406,7 @@ Also update line ~522: change "config-manager → Optimization tab" to "config-m
 
 In the capability table row and Section 8 (both reference the Python Tkinter app at `config-manager/`), replace the descriptions with the web manager. Concretely:
 - Table row: change "Standalone Python desktop app (Tkinter, stdlib-only) at [`config-manager/`]..." to "Standalone web app (Node/TS + Fastify API, React/Vite UI) at [`config-manager-web/`](../config-manager-web/). OIDC SSO + RBAC, multi-environment, optimistic-locked editing, write-only BYOK, pricing fetch, candidates, audit. Excluded from the npm package."
-- Section 8 prose: replace the "written in Python with Tkinter" description with the web manager's (deployed multi-user Node/React app), keeping the "zero coupling / deleting it breaks nothing / excluded from dist" guarantees. Update the `python3 config-manager/freerouter_admin.py ...` command examples to the `config-manager-web` build/run commands shown in README Step 2.
+- Section 8 prose: replace the "written in Python with Tkinter" description with the web manager's (deployed multi-user Node/React app), keeping the "zero coupling / deleting it breaks nothing / excluded from dist" guarantees. Update the `python3 config-manager/finrouter_admin.py ...` command examples to the `config-manager-web` build/run commands shown in README Step 2.
 
 - [ ] **Step 4: Update stale source comments**
 
@@ -419,7 +419,7 @@ In the capability table row and Section 8 (both reference the Python Tkinter app
 Run (from repo root):
 ```
 grep -rIn "config-manager/" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=config-manager-web --exclude-dir=docs/superpowers . || echo "no stray refs"
-grep -rIln "freerouter_admin\|config-manager\b" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=config-manager-web --exclude-dir=docs/superpowers . | grep -v config-manager-web || echo "clean"
+grep -rIln "finrouter_admin\|config-manager\b" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=config-manager-web --exclude-dir=docs/superpowers . | grep -v config-manager-web || echo "clean"
 ```
 Expected: no references to the deleted `config-manager/` path remain (matches under `config-manager-web/` and `docs/superpowers/` historical plans/specs are fine). Fix any stragglers.
 

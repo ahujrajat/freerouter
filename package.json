@@ -1,5 +1,5 @@
 {
-  "name": "freerouter",
+  "name": "finrouter",
   "version": "0.1.0",
   "description": "Embeddable BYOK LLM router with enterprise FinOps, sub-5ms overhead, and AES-256-GCM key security",
   "type": "module",
@@ -34,7 +34,7 @@
     }
   },
   "bin": {
-    "freerouter": "./dist/cli.js"
+    "finrouter": "./dist/cli.js"
   },
   "files": ["dist"],
   "scripts": {
